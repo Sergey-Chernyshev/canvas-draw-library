@@ -1,0 +1,9 @@
+<!-- canvas-library/components/canvas.component.html -->
+
+<div class="toolbar">
+    <button (click)="setDrawingMode()" [disabled]="renderingService.stateService.isDrawingMode">Режим рисования</button>
+    <button (click)="setSelectionMode()" [disabled]="!renderingService.stateService.isDrawingMode">Режим выделения</button>
+    <button (click)="moveForward()" [disabled]="!renderingService.stateService.selectedPolygonIndex">Вперёд</button>
+    <button (click)="moveBackward()" [disabled]="!renderingService.stateService.selectedPolygonIndex">Назад</button>
+</div>
+<canvas #canvas></canvas>

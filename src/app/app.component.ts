@@ -1,14 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcomeComponent } from './nx-welcome.component';
+import {CanvasComponent} from "./canvas-library";
 
 @Component({
   standalone: true,
-  imports: [NxWelcomeComponent, RouterModule],
+    imports: [RouterModule, CanvasComponent],
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.less',
 })
 export class AppComponent {
-  title = 'untitled';
+  title = 'canvas_draw';
 }
