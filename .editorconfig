@@ -1,0 +1,23 @@
+# Editor configuration, see https://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+max_line_length = 120
+end_of_line = lf
+ij_any_blank_lines_around_method = 1
+ij_css_blank_lines_between_blocks = 1
+ij_typescript_use_double_quotes = false
+ij_javascript_use_double_quotes = false
+
+[*.md]
+indent_size = 2
+max_line_length = off
+trim_trailing_whitespace = false
+
+[{*.yml,*.yaml,*.uplugin,*.bowerrc,.*rc,*.jsb3,*.jsb2}]
+indent_size = 2
