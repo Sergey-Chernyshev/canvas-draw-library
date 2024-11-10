@@ -69,7 +69,9 @@ export class CanvasComponent implements AfterViewInit {
 
 
 
-    console.log(this.#polygonsStoreService.selectAllPolygons)
+
+
+      console.log(this.#polygonsStoreService.selectAllPolygons)
   }
 
 
