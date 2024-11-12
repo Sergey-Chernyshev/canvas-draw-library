@@ -6,6 +6,7 @@ import { ElementRef, Injectable } from '@angular/core';
 export class CanvasService {
   #canvasRef: ElementRef<HTMLCanvasElement> | null = null;
   #ctx: CanvasRenderingContext2D | null = null;
+  #canvasMenuRef: ElementRef<HTMLDivElement> | null  = null;
 
   get ctx(): CanvasRenderingContext2D | null {
     return this.#ctx;
@@ -21,6 +22,14 @@ export class CanvasService {
 
   set canvasRef(canvasRef :ElementRef<HTMLCanvasElement>) {
     this.#canvasRef = canvasRef;
+  }
+
+  set canvasMenuRef(canvasMenuRef :ElementRef<HTMLDivElement>) {
+      this.#canvasMenuRef = canvasMenuRef;
+  }
+
+  get canvasMenuRef(): ElementRef<HTMLDivElement> | null {
+      return this.#canvasMenuRef;
   }
 
 }

@@ -3,20 +3,15 @@ import { BehaviorSubject } from 'rxjs';
 import { EditorState, TransformState } from './models/canvas-editor.service';
 
 
-
 @Injectable({ providedIn: 'root' })
 export class CanvasStateService {
 
     readonly #transformState$ = new BehaviorSubject<TransformState>({
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0
+        scale: 1, offsetX: 0, offsetY: 0
     });
 
     readonly #editorState$ = new BehaviorSubject<EditorState>({
-        stateValue: "viewMode",
-        selectedPolygonId: null,
-        selectedPolygon: null,
+        stateValue: 'viewMode', selectedPolygonId: null, selectedPolygon: null
     });
 
 
@@ -40,21 +35,19 @@ export class CanvasStateService {
     updateTransformState(newState: Partial<TransformState>) {
         const currentState = this.#transformState$.value;
         this.#transformState$.next({
-            ...currentState,
-            ...newState
+            ...currentState, ...newState
         });
     }
 
     // Функция для обновления состояния редактора
     updateEditorState(newState: Partial<EditorState>) {
         const currentState = this.#editorState$.value;
-        if (newState.stateValue === "viewMode") {
+        if (newState.stateValue === 'viewMode') {
             newState.selectedPolygonId = null;
             newState.selectedPolygon = null;
         }
         this.#editorState$.next({
-            ...currentState,
-            ...newState
+            ...currentState, ...newState
         });
     }
 }
