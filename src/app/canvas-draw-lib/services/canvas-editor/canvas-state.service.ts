@@ -6,6 +6,7 @@ import { EditorState, TransformState } from './models/canvas-editor.service';
 
 @Injectable({ providedIn: 'root' })
 export class CanvasStateService {
+
     readonly #transformState$ = new BehaviorSubject<TransformState>({
         scale: 1,
         offsetX: 0,
@@ -47,6 +48,10 @@ export class CanvasStateService {
     // Функция для обновления состояния редактора
     updateEditorState(newState: Partial<EditorState>) {
         const currentState = this.#editorState$.value;
+        if (newState.stateValue === "viewMode") {
+            newState.selectedPolygonId = null;
+            newState.selectedPolygon = null;
+        }
         this.#editorState$.next({
             ...currentState,
             ...newState
