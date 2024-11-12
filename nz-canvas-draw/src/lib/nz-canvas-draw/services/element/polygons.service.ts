@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { CanvasService } from '../canvas.service';
 import { CanvasPolygon } from './models/element.interface';
 import { PolygonsStoreService } from './polygons-store.service';
+import { generateUniqueId } from '../utils/functions-utils.utils';
 
 @Injectable({
     providedIn: 'root'
@@ -136,7 +137,7 @@ export class PolygonsService {
      */
     savePolygonData(vertices: Array<{ x: number; y: number }>): CanvasPolygon {
         const newPolygon: CanvasPolygon = {
-            id: this.generateUniqueId(), // Метод для генерации уникального ID
+            id: generateUniqueId(),
             vertices: vertices.map(vertex => ({ ...vertex })), // Копирование вершин
             style: {
                 fillColor: 'rgba(0, 128, 255, 0.5)', strokeColor: 'black', lineWidth: 2
@@ -184,9 +185,5 @@ export class PolygonsService {
     //     // Рисуем вершины
     //     this.drawVertices(vertices, drawVerticesColor);
     // }
-
-    private generateUniqueId(): string {
-        return '_' + Math.random().toString(36).substr(2, 9);
-    }
 
 }
