@@ -22,9 +22,11 @@ export class CanvasRenderUtilsService implements OnDestroy {
         this.#polygonsStoreService.selectAllPolygons$
             .pipe(takeUntil(this.#destroy))
             .subscribe(() => {
-                console.log("change data")
-                this.redrawCanvas();
+                if (this.#canvasService.ctx && this.#canvasService.canvasRef){
+                    this.redrawCanvas();
+                }
             });
+
     }
 
     resizeCanvas(): void {

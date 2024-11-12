@@ -1,10 +1,15 @@
 export interface CanvasPolygon {
   id: string;
-  vertices: Array<{ x: number; y: number }>;
+  vertices: Array< CanvasDotCoordinate >;
   style: CanvasPolygonStyle;
   state: 'Normal' | 'Selected' | 'Highlighted';
   transform?: CanvasPolygonTransform;
   metadata?: any;
+}
+
+export interface CanvasDotCoordinate{
+    x: number;
+    y: number;
 }
 
 export interface CanvasPolygonStyle {

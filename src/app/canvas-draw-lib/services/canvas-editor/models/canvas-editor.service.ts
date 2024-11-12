@@ -1,3 +1,5 @@
+import { CanvasPolygon } from '../../element/models/element.interface';
+
 export interface TransformState {
     scale: number;
     offsetX: number;
@@ -7,4 +9,5 @@ export interface TransformState {
 export interface EditorState {
     stateValue: 'viewMode' | "selectMode";
     selectedPolygonId: string | null;
+    selectedPolygon: CanvasPolygon | null;
 }

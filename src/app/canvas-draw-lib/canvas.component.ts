@@ -7,6 +7,9 @@ import { CanvasRenderUtilsService } from './services/canvas-editor/canvas-render
 import { CanvasEventsService } from './services/canvas-editor/canvas-events.service';
 import { PolygonsStoreService } from './services/element/polygons-store.service';
 import { CanvasZoomService } from './services/canvas-editor/canvas-zoom.service';
+import { CanvasStateService } from './services/canvas-editor/canvas-state.service';
+import { Observable } from 'rxjs';
+import { EditorState } from './services/canvas-editor/models/canvas-editor.service';
 
 // Декоратор @Component определяет метаданные компонента
 @Component({
@@ -23,6 +26,7 @@ export class CanvasComponent implements AfterViewInit {
   readonly #canvasEventsService = inject(CanvasEventsService);
   readonly #polygonsStoreService = inject(PolygonsStoreService);
   readonly #canvasZoomService = inject(CanvasZoomService);
+  readonly #canvasStateService = inject(CanvasStateService);
 
   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
 
@@ -74,6 +78,9 @@ export class CanvasComponent implements AfterViewInit {
       console.log(this.#polygonsStoreService.selectAllPolygons)
   }
 
+  get getCanvasState(): Observable<EditorState> {
+      return this.#canvasStateService.editorState$
+  }
 
   // Контекст рисования на канвасе
   //   @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
