@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { EditorState, TransformState } from './models/canvas-editor.service';
+import { EditorState, TransformState } from './models/canvas-editor.interface';
 
 
 @Injectable({ providedIn: 'root' })

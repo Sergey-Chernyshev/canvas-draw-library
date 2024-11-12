@@ -4,7 +4,7 @@ import { inject, Injectable, OnDestroy } from '@angular/core';
 import { CanvasService } from '../canvas.service';
 import { CanvasStateService } from './canvas-state.service';
 import { PolygonsStoreService } from '../element/polygons-store.service';
-import { EditorState } from './models/canvas-editor.service';
+import { EditorState } from './models/canvas-editor.interface';
 import { fromEvent, map, Subject, switchMap, tap, throttleTime } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CanvasRenderUtilsService } from './canvas-render-utils.service';

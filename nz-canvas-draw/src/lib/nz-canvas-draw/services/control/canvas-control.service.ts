@@ -1,29 +1,24 @@
 import { ElementRef, inject, Injectable, Renderer2, RendererFactory2 } from '@angular/core';
-import { PolygonsStoreService } from './element/polygons-store.service';
-import { CanvasStateService } from './canvas-editor/canvas-state.service';
+import { generateUniqueId } from '../utils/functions-utils.utils';
+import { PolygonsStoreService } from '../element/polygons-store.service';
+import { CanvasZoomService } from '../canvas-editor/canvas-zoom.service';
+import { CanvasStateService } from '../canvas-editor/canvas-state.service';
 
-@Injectable({
-    providedIn: 'root'
-})
-export class CanvasInitService {
-    #rendererFactory = inject(RendererFactory2)
-    #polygonsStoreService = inject(PolygonsStoreService);
-    #canvasStateService = inject(CanvasStateService);
+@Injectable(
+    {providedIn: 'root'}
+)
+export class CanvasControlService {
+    readonly #rendererFactory = inject(RendererFactory2)
+    readonly #polygonsStoreService = inject(PolygonsStoreService);
+    readonly #canvasStateService = inject(CanvasStateService);
 
     #renderer: Renderer2 = this.#rendererFactory.createRenderer(null, null);
 
     readonly #offsetX = 20;
     readonly #offsetY = 30;
 
-    initCanvas(){
-
-
-    }
-
-
     setupCanvasEditorMenu(menuRef: ElementRef<HTMLDivElement>): void {
         const menu = menuRef.nativeElement
-        // Создаем дефолтные кнопки
         const buttons = [
             { label: 'Круг', action: () => this.#addCircle() },
             { label: 'Очистить холст', action: () => this.#clearCanvas() },
@@ -74,7 +69,7 @@ export class CanvasInitService {
 
         const newPolygon = {
             ...selectedPolygon,
-            id: this.#generateUniqueId(),
+            id: generateUniqueId(),
             vertices: selectedPolygon.vertices.map(vertex => ({
                 x: vertex.x + this.#offsetX,
                 y: vertex.y + this.#offsetY
@@ -85,10 +80,4 @@ export class CanvasInitService {
 
         this.#canvasStateService.updateEditorState({ selectedPolygon: newPolygon, selectedPolygonId: newPolygon.id });
     }
-
-
-    #generateUniqueId(): string {
-        return '_' + Math.random().toString(36).substr(2, 9);
-    }
-
 }

@@ -1,81 +1,46 @@
 import { AfterViewInit, Component, ElementRef, inject, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-import { CanvasService } from './services/canvas.service';
-import { PolygonsService } from './services/element/polygons.service';
-import { CanvasRenderUtilsService } from './services/canvas-editor/canvas-render-utils.service';
-import { CanvasEventsService } from './services/canvas-editor/canvas-events.service';
-import { PolygonsStoreService } from './services/element/polygons-store.service';
-import { CanvasZoomService } from './services/canvas-editor/canvas-zoom.service';
-import { CanvasStateService } from './services/canvas-editor/canvas-state.service';
-import { Observable } from 'rxjs';
-import { EditorState } from './services/canvas-editor/models/canvas-editor.service';
-import { CanvasInitService } from './services/canvas-init.service';
+import { CanvasInitService, CanvasSettings, PolygonsService } from '@canvas_draw/nz-canvas-draw';
 
 
-// Декоратор @Component определяет метаданные компонента
 @Component({
-    selector: 'app-canvas', // Селектор компонента, используемый в шаблонах
-    standalone: true, // Указывает, что компонент является Standalone (без необходимости в NgModule)
-    imports: [CommonModule], // Модули, импортируемые в компонент
-    templateUrl: './canvas.component.html', // Путь к HTML-шаблону компонента
-    styleUrls: ['./canvas.component.less'] // Путь к стилям компонента
+    selector: 'app-canvas',
+    standalone: true,
+    imports: [CommonModule],
+    templateUrl: './canvas.component.html',
+    styleUrls: ['./canvas.component.less']
 })
 export class CanvasComponent implements AfterViewInit {
     @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
     @ViewChild('canvasMenu') canvasMenu!: ElementRef<HTMLDivElement>;
-    readonly #canvasElementsService = inject(PolygonsService);
-    readonly #canvasService = inject(CanvasService);
-    readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
-    readonly #canvasEventsService = inject(CanvasEventsService);
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
-    readonly #canvasZoomService = inject(CanvasZoomService);
-    readonly #canvasStateService = inject(CanvasStateService);
     readonly #canvasInitService = inject(CanvasInitService);
-
-    get getCanvasState(): Observable<EditorState> {
-        return this.#canvasStateService.editorState$;
-    }
+    // readonly #canvasStateService = inject(CanvasStateService);
+    readonly #canvasElementsService = inject(PolygonsService);
+    //
+    // get getCanvasState(): Observable<EditorState> {
+    //     return this.#canvasStateService.editorState$;
+    // }
 
     ngAfterViewInit() {
-        this.#canvasService.canvasRef = this.canvasRef;
-        const context = this.canvasRef.nativeElement.getContext('2d');
-        if (!context) {
-            return;
+        const canvasSettings: Partial<CanvasSettings> = {
+            menuRef: this.canvasMenu,
         }
-        this.#canvasService.ctx = context;
 
-        this.#canvasInitService.setupCanvasEditorMenu(this.canvasMenu);
-        this.#canvasRenderUtilsService.resizeCanvas();
-        this.#canvasEventsService.initListeners();
-        this.#canvasZoomService.initializeZoom();
-        this.#canvasZoomService.initializePan();
-        const rectangleVertices = [{ x: 100, y: 100 }, // Верхняя левая
-            { x: 300, y: 100 },
-            { x: 300, y: 200 },
-            { x: 100, y: 200 },
-            { x: 200, y: 250 },
-            { x: 50, y: 150 }
-        ];
 
-        const triangleVertices = [{ x: 400, y: 100 }, // Вершина 1
-            { x: 500, y: 300 },
-            { x: 300, y: 300 }
-        ];
+        this.#canvasInitService.initCanvas(this.canvasRef, canvasSettings);
+
+        const rectangleVertices = [{ x: 100, y: 100 },
+            { x: 300, y: 100 }, { x: 300, y: 200 }, { x: 100, y: 200 }, { x: 200, y: 250 }, { x: 50, y: 150 }];
+
+        const triangleVertices = [{ x: 400, y: 100 },
+            { x: 500, y: 300 }, { x: 300, y: 300 }];
 
         const pentagonVertices = [{ x: 600, y: 100 },  // Вершина 1
-            { x: 700, y: 150 },
-            { x: 650, y: 250 },
-            { x: 550, y: 250 },
-            { x: 500, y: 150 }
-        ];
+            { x: 700, y: 150 }, { x: 650, y: 250 }, { x: 550, y: 250 }, { x: 500, y: 150 }];
 
         this.#canvasElementsService.drawTestPolygon(rectangleVertices);
         this.#canvasElementsService.drawTestPolygon(triangleVertices);
         this.#canvasElementsService.drawTestPolygon(pentagonVertices);
-
-
-        console.log(this.#polygonsStoreService.selectAllPolygons);
     }
 
     // Контекст рисования на канвасе
