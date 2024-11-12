@@ -15,6 +15,7 @@ export class CanvasStateService {
     readonly #editorState$ = new BehaviorSubject<EditorState>({
         stateValue: "viewMode",
         selectedPolygonId: null,
+        selectedPolygon: null,
     });
 
 

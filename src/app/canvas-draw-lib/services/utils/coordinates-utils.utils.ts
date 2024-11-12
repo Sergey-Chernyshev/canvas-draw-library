@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanvasService } from '../canvas.service';
 import { PolygonsStoreService } from '../element/polygons-store.service';
 import { CanvasStateService } from '../canvas-editor/canvas-state.service';
+import { CanvasDotCoordinate } from '../element/models/element.interface';
 
 /**
  * Проверяет, находится ли точка внутри окружности.
@@ -10,7 +11,7 @@ import { CanvasStateService } from '../canvas-editor/canvas-state.service';
  * @param radius Радиус окружности.
  * @returns true, если точка находится внутри или на границе окружности, иначе false.
  */
-export function isPointInCircle(point: { x: number; y: number }, center: { x: number; y: number }, radius: number): boolean {
+export function isPointInCircle(point: CanvasDotCoordinate, center: CanvasDotCoordinate, radius: number): boolean {
     const distanceSquared = (point.x - center.x) ** 2 + (point.y - center.y) ** 2;
     return distanceSquared <= radius ** 2;
 }
@@ -23,8 +24,8 @@ export function isPointInCircle(point: { x: number; y: number }, center: { x: nu
  * @returns true, если точка находится внутри полигона (или на границе, если includeBoundary=true), иначе false.
  */
 export function isPointInPolygon(
-    point: { x: number; y: number },
-    vertices: Array<{ x: number; y: number }>,
+    point: CanvasDotCoordinate,
+    vertices: Array<CanvasDotCoordinate>,
 ): boolean {
     let inside = false;
 

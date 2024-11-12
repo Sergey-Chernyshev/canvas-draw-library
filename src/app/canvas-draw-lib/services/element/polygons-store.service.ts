@@ -1,11 +1,14 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { CanvasPolygon } from './models/element.interface';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { CanvasService } from '../canvas.service';
+import { CanvasStateService } from '../canvas-editor/canvas-state.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class PolygonsStoreService {
+    readonly #canvasStateService = inject(CanvasStateService);
     #polygons: CanvasPolygon[] = [];
     #polygons$: BehaviorSubject<CanvasPolygon[]> = new BehaviorSubject<CanvasPolygon[]>(this.#polygons);
 
@@ -29,7 +32,9 @@ export class PolygonsStoreService {
             this.#polygons[index] = {
                 ...this.#polygons[index], ...updatedPolygonData
             };
-            // Уведомляем подписчиков о новом состоянии
+            if(updatedPolygonData.state === 'Selected'){
+                this.#canvasStateService.updateEditorState({selectedPolygon: this.#polygons[index]})
+            }
             this.#polygons$.next(this.#polygons);
         } else {
             console.warn(`Polygon with id ${polygonId} not found`);

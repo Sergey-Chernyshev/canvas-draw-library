@@ -2,7 +2,7 @@ import { inject, Injectable, OnDestroy, OnInit } from '@angular/core';
 import { CanvasService } from '../canvas.service';
 import { CanvasRenderUtilsService } from './canvas-render-utils.service';
 import { CanvasStateService } from './canvas-state.service';
-import { fromEvent, Subject } from 'rxjs';
+import { fromEvent, map, Subject, switchMap, tap, throttleTime } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 @Injectable({
@@ -56,48 +56,47 @@ export class CanvasZoomService implements OnDestroy {
     }
 
     initializePan(): void {
-        const canvasRef = this.#canvasService.canvasRef;
-        if (!canvasRef) {
-            throw new Error('Canvas context is not available');
-        }
-
-        const mousedown$ = fromEvent<MouseEvent>(canvasRef.nativeElement, 'mousedown');
-        const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove');
-        const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
-
-        let isPanning = false;
-        let startX = 0;
-        let startY = 0;
-
-        mousedown$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(event => {
-                isPanning = true;
-                const { offsetX, offsetY } = this.#canvasStateService.transformState;
-
-                startX = event.clientX - offsetX;
-                startY = event.clientY - offsetY;
-            });
-
-        mousemove$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(event => {
-                if (!isPanning) return;
-
-                const newOffsetX = event.clientX - startX;
-                const newOffsetY = event.clientY - startY;
-
-                this.#canvasStateService.transformState.offsetX = newOffsetX;
-                this.#canvasStateService.transformState.offsetY = newOffsetY;
-
-                this.#canvasRenderUtilsService.redrawCanvas();
-            });
-
-        mouseup$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => {
-                isPanning = false;
-            });
+        // const canvasRef = this.#canvasService.canvasRef;
+        // if (!canvasRef) {
+        //     throw new Error('Canvas context is not available');
+        // }
+        //
+        // const mousedown$ = fromEvent<MouseEvent>(canvasRef.nativeElement, 'mousedown');
+        // const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove').pipe(
+        //     throttleTime(0)
+        // );
+        // const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
+        //
+        // mousedown$
+        //     .pipe(
+        //         takeUntil(this.destroy$),
+        //         switchMap((startEvent) => {
+        //             const { offsetX, offsetY } = this.#canvasStateService.transformState;
+        //             const startX = startEvent.clientX - offsetX;
+        //             const startY = startEvent.clientY - offsetY;
+        //
+        //             console.log("старт: ", startX, startY);
+        //
+        //             return mousemove$.pipe(
+        //                 map(moveEvent => ({
+        //                     x: moveEvent.clientX - startX,
+        //                     y: moveEvent.clientY - startY
+        //                 })),
+        //                 tap(coords => {
+        //                     this.#canvasStateService.transformState.offsetX = coords.x;
+        //                     this.#canvasStateService.transformState.offsetY = coords.y;
+        //                     this.#canvasRenderUtilsService.redrawCanvas();
+        //                     console.log("Смещение: ", coords.x, coords.y);
+        //                 }),
+        //                 takeUntil(mouseup$)
+        //             );
+        //         })
+        //     )
+        //     .subscribe({
+        //         complete: () => {
+        //             console.log('Панорамирование завершено');
+        //         }
+        //     });
     }
 
     ngOnDestroy(): void {
