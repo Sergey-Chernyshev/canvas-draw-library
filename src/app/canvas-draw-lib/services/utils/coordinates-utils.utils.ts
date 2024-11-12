@@ -16,6 +16,23 @@ export function isPointInCircle(point: CanvasDotCoordinate, center: CanvasDotCoo
     return distanceSquared <= radius ** 2;
 }
 
+export function findPointInPolygonVertex(
+    point: CanvasDotCoordinate,
+    vertices: CanvasDotCoordinate[],
+    radius: number
+): number | null {
+    const radiusSquared = radius ** 2;
+
+    for (let i = 0; i < vertices.length; i++) {
+        const distanceSquared = (point.x - vertices[i].x) ** 2 + (point.y - vertices[i].y) ** 2;
+        if (distanceSquared <= radiusSquared) {
+            return i;
+        }
+    }
+
+    return null;
+}
+
 /**
  * Проверяет, находится ли точка внутри полигона.
  * @param point Точка с координатами { x: number; y: number }.
