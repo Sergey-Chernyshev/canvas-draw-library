@@ -59,6 +59,7 @@ export class CanvasRenderUtilsService implements OnDestroy {
         if (!ctx || !canvasRef) {
             throw new Error('Canvas context or canvasRef is not available');
         }
+        console.log('redraw');
 
         const offsetX = this.#canvasStateService.transformState.offsetX;
         const offsetY = this.#canvasStateService.transformState.offsetY;

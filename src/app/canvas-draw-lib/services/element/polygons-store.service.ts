@@ -25,6 +25,11 @@ export class PolygonsStoreService {
         this.#polygons$.next(this.#polygons);
     }
 
+    clearStore(){
+        this.#polygons = []
+        this.#polygons$.next(this.#polygons);
+    }
+
     updatePolygonById(polygonId: string, updatedPolygonData: Partial<CanvasPolygon>): void {
         const index = this.#polygons.findIndex(polygon => polygon.id === polygonId);
         if (index !== -1) {
@@ -43,5 +48,16 @@ export class PolygonsStoreService {
 
     getPolygonById(polygonId: string): CanvasPolygon | undefined {
         return this.#polygons.find(polygon => polygon.id === polygonId);
+    }
+
+    removePolygonById(polygonId: string): void {
+        const index = this.#polygons.findIndex(polygon => polygon.id === polygonId);
+        if (index !== -1) {
+            this.#polygons.splice(index, 1);
+            this.#polygons$.next(this.#polygons);
+            console.log(`Polygon with id ${polygonId} has been removed`);
+        } else {
+            console.warn(`Polygon with id ${polygonId} not found`);
+        }
     }
 }
