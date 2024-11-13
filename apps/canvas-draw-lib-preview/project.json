@@ -1,10 +1,10 @@
 {
-    "name": "canvas_draw",
-    "$schema": "node_modules/nx/schemas/project-schema.json",
+    "name": "canvas-preview",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "includedScripts": [],
     "projectType": "application",
     "prefix": "app",
-    "sourceRoot": "./src",
+    "sourceRoot": "apps/canvas-draw-lib-preview/src",
     "tags": [],
     "targets": {
         "build": {
@@ -12,10 +12,10 @@
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/canvas_draw",
-                "index": "./src/index.html",
-                "main": "./src/main.ts",
+                "index": "apps/canvas-draw-lib-preview/src/index.html",
+                "main": "apps/canvas-draw-lib-preview/src/main.ts",
                 "polyfills": ["zone.js"],
-                "tsConfig": "tsconfig.app.json",
+                "tsConfig": "apps/canvas-draw-lib-preview/tsconfig.app.json",
                 "inlineStyleLanguage": "less",
                 "assets": [
                     {
@@ -23,7 +23,7 @@
                         "input": "public"
                     }
                 ],
-                "styles": ["./src/styles.less"],
+                "styles": ["apps/canvas-draw-lib-preview/src/styles.less"],
                 "scripts": []
             },
             "configurations": {
@@ -57,10 +57,10 @@
             "executor": "@angular-devkit/build-angular:dev-server",
             "configurations": {
                 "production": {
-                    "buildTarget": "canvas_draw:build:production"
+                    "buildTarget": "canvas-preview:build:production"
                 },
                 "development": {
-                    "buildTarget": "canvas_draw:build:development"
+                    "buildTarget": "canvas-preview:build:development"
                 }
             },
             "defaultConfiguration": "development"
@@ -68,26 +68,26 @@
         "extract-i18n": {
             "executor": "@angular-devkit/build-angular:extract-i18n",
             "options": {
-                "buildTarget": "canvas_draw:build"
+                "buildTarget": "canvas-preview:build"
             }
         },
         "lint": {
             "executor": "@nx/eslint:lint",
             "options": {
-                "lintFilePatterns": ["./src"]
+                "lintFilePatterns": ["apps/canvas-draw-lib-preview/src"]
             }
         },
         "test": {
             "executor": "@nx/jest:jest",
             "outputs": ["{workspaceRoot}/coverage/{projectName}"],
             "options": {
-                "jestConfig": "jest.config.app.ts"
+                "jestConfig": "apps/canvas-draw-lib-preview/jest.config.app.ts"
             }
         },
         "serve-static": {
             "executor": "@nx/web:file-server",
             "options": {
-                "buildTarget": "canvas_draw:build",
+                "buildTarget": "canvas-preview:build",
                 "spa": true
             }
         }

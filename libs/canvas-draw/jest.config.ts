@@ -1,8 +1,8 @@
 export default {
     displayName: "nz-canvas-draw",
-    preset: "../jest.preset.js",
+    preset: "../../jest.preset.js",
     setupFilesAfterEnv: ["<rootDir>/src/test-setup.ts"],
-    coverageDirectory: "../coverage/nz-canvas-draw",
+    coverageDirectory: "../../coverage/libs/canvas-draw',
     transform: {
         "^.+\\.(ts|mjs|js|html)$": [
             "jest-preset-angular",

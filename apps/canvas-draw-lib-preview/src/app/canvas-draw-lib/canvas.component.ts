@@ -1,8 +1,8 @@
 import type { AfterViewInit, ElementRef } from "@angular/core";
 import { Component, inject, ViewChild } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import type { CanvasSettings } from "@canvas_draw/nz-canvas-draw";
-import { CanvasInitService, PolygonsService } from "@canvas_draw/nz-canvas-draw";
+import type { CanvasSettings } from "@nz-ui/nz-canvas-draw";
+import { CanvasInitService, PolygonsService } from "@nz-ui/nz-canvas-draw";
 
 @Component({
     selector: "app-canvas",
