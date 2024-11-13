@@ -1,13 +1,14 @@
-import { inject, Injectable, OnDestroy, OnInit } from '@angular/core';
-import { CanvasService } from '../canvas.service';
-import { PolygonsStoreService } from '../element/polygons-store.service';
-import { CanvasPolygon } from '../element/models/element.interface';
-import { PolygonsService } from '../element/polygons.service';
-import { Subject, takeUntil } from 'rxjs';
-import { CanvasStateService } from './canvas-state.service';
+import type { OnDestroy } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
+import { CanvasService } from "../canvas.service";
+import { PolygonsStoreService } from "../element/polygons-store.service";
+import type { CanvasPolygon } from "../element/models/element.interface";
+import { PolygonsService } from "../element/polygons.service";
+import { Subject, takeUntil } from "rxjs";
+import { CanvasStateService } from "./canvas-state.service";
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: "root",
 })
 export class CanvasRenderUtilsService implements OnDestroy {
     readonly #canvasService = inject(CanvasService);
@@ -16,25 +17,21 @@ export class CanvasRenderUtilsService implements OnDestroy {
     readonly #canvasStateService = inject(CanvasStateService);
     #destroy = new Subject<void>();
 
-
     constructor() {
-        console.log("change data")
-        this.#polygonsStoreService.selectAllPolygons$
-            .pipe(takeUntil(this.#destroy))
-            .subscribe(() => {
-                if (this.#canvasService.ctx && this.#canvasService.canvasRef){
-                    this.redrawCanvas();
-                }
-            });
-
+        console.log("change data");
+        this.#polygonsStoreService.selectAllPolygons$.pipe(takeUntil(this.#destroy)).subscribe(() => {
+            if (this.#canvasService.ctx && this.#canvasService.canvasRef) {
+                this.redrawCanvas();
+            }
+        });
     }
 
     resizeCanvas(): void {
-        console.log('resize');
+        console.log("resize");
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
         if (!ctx || !canvasRef) {
-            throw new Error('Canvas context is not available');
+            throw new Error("Canvas context is not available");
         }
         const canvas = canvasRef.nativeElement;
         const dpr = window.devicePixelRatio || 1;
@@ -49,7 +46,6 @@ export class CanvasRenderUtilsService implements OnDestroy {
         this.redrawCanvas();
     }
 
-
     /**
      * Метод для перерисовки канваса.
      */
@@ -57,9 +53,9 @@ export class CanvasRenderUtilsService implements OnDestroy {
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
         if (!ctx || !canvasRef) {
-            throw new Error('Canvas context or canvasRef is not available');
+            throw new Error("Canvas context or canvasRef is not available");
         }
-        console.log('redraw');
+        console.log("redraw");
 
         const offsetX = this.#canvasStateService.transformState.offsetX;
         const offsetY = this.#canvasStateService.transformState.offsetY;
@@ -81,5 +77,4 @@ export class CanvasRenderUtilsService implements OnDestroy {
         this.#destroy.next();
         this.#destroy.complete();
     }
-
 }

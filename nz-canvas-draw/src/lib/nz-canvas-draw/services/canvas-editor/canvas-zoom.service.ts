@@ -1,12 +1,13 @@
-import { inject, Injectable, OnDestroy, OnInit } from '@angular/core';
-import { CanvasService } from '../canvas.service';
-import { CanvasRenderUtilsService } from './canvas-render-utils.service';
-import { CanvasStateService } from './canvas-state.service';
-import { fromEvent, map, Subject, switchMap, tap, throttleTime } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import type { OnDestroy } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
+import { CanvasService } from "../canvas.service";
+import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
+import { CanvasStateService } from "./canvas-state.service";
+import { fromEvent, Subject } from "rxjs";
+import { takeUntil } from "rxjs/operators";
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: "root",
 })
 export class CanvasZoomService implements OnDestroy {
     readonly #canvasService = inject(CanvasService);
@@ -22,17 +23,15 @@ export class CanvasZoomService implements OnDestroy {
     initializeZoom(): void {
         const canvasRef = this.#canvasService.canvasRef;
         if (!canvasRef) {
-            throw new Error('Canvas context is not available');
+            throw new Error("Canvas context is not available");
         }
 
         const canvas = canvasRef.nativeElement;
 
         // Создаем Observable для события wheel
-        fromEvent<WheelEvent>(canvas, 'wheel')
-            .pipe(
-                takeUntil(this.destroy$)
-            )
-            .subscribe(event => {
+        fromEvent<WheelEvent>(canvas, "wheel")
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((event) => {
                 const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
 
                 event.preventDefault();
