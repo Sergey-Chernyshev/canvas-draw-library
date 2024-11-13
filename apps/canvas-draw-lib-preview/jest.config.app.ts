@@ -1,8 +1,8 @@
 export default {
     displayName: "canvas_draw",
-    preset: "./jest.preset.js",
+    preset: "../../jest.preset.js",
     setupFilesAfterEnv: ["<rootDir>/src/test-setup.ts"],
-    coverageDirectory: "./coverage/canvas_draw",
+    coverageDirectory: "../../coverage/canvas_draw",
     transform: {
         "^.+\\.(ts|mjs|js|html)$": [
             "jest-preset-angular",

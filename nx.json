@@ -63,5 +63,5 @@
             "unitTestRunner": "jest"
         }
     },
-    "defaultProject": "canvas_draw"
+    "defaultProject": "canvas-preview"
 }
