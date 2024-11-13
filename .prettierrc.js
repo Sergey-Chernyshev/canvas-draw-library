@@ -15,7 +15,7 @@ module.exports = {
             files: ["*.js", "*.ts"],
             options: {
                 parser: "typescript",
-                printWidth: 120, // В @taiga-ui это значение 90,
+                printWidth: 120,
             },
         },
     ],
