@@ -1,14 +1,12 @@
-import { ElementRef, inject, Injectable, Renderer2, RendererFactory2 } from '@angular/core';
-import { generateUniqueId } from '../utils/functions-utils.utils';
-import { PolygonsStoreService } from '../element/polygons-store.service';
-import { CanvasZoomService } from '../canvas-editor/canvas-zoom.service';
-import { CanvasStateService } from '../canvas-editor/canvas-state.service';
+import type { ElementRef, Renderer2 } from "@angular/core";
+import { inject, Injectable, RendererFactory2 } from "@angular/core";
+import { generateUniqueId } from "../utils/functions-utils.utils";
+import { PolygonsStoreService } from "../element/polygons-store.service";
+import { CanvasStateService } from "../canvas-editor/canvas-state.service";
 
-@Injectable(
-    {providedIn: 'root'}
-)
+@Injectable({ providedIn: "root" })
 export class CanvasControlService {
-    readonly #rendererFactory = inject(RendererFactory2)
+    readonly #rendererFactory = inject(RendererFactory2);
     readonly #polygonsStoreService = inject(PolygonsStoreService);
     readonly #canvasStateService = inject(CanvasStateService);
 
@@ -18,66 +16,76 @@ export class CanvasControlService {
     readonly #offsetY = 30;
 
     setupCanvasEditorMenu(menuRef: ElementRef<HTMLDivElement>): void {
-        const menu = menuRef.nativeElement
+        const menu = menuRef.nativeElement;
         const buttons = [
-            { label: 'Круг', action: () => this.#addCircle() },
-            { label: 'Очистить холст', action: () => this.#clearCanvas() },
-            { label: 'Дублировать', action: () => this.#copyPolygonOnCanvas() },
-            { label: 'Удалить', action: () => this.#deletePolygonOnCanvas() }
-
+            { label: "Круг", action: () => this.#addCircle() },
+            {
+                label: "Очистить холст",
+                action: () => this.#clearCanvas(),
+            },
+            { label: "Дублировать", action: () => this.#copyPolygonOnCanvas() },
+            {
+                label: "Удалить",
+                action: () => this.#deletePolygonOnCanvas(),
+            },
         ];
 
-        buttons.forEach(button => {
-            const btn = this.#renderer.createElement('button');
+        buttons.forEach((button) => {
+            const btn = this.#renderer.createElement("button");
             const text = this.#renderer.createText(button.label);
 
             this.#renderer.appendChild(btn, text);
-            this.#renderer.listen(btn, 'click', button.action);
+            this.#renderer.listen(btn, "click", button.action);
 
             // Добавление стилей кнопки
-            this.#renderer.setStyle(btn, 'margin', '5px');
-            this.#renderer.setStyle(btn, 'padding', '8px 12px');
-            this.#renderer.setStyle(btn, 'background-color', '#007bff');
-            this.#renderer.setStyle(btn, 'color', '#fff');
-            this.#renderer.setStyle(btn, 'border', 'none');
-            this.#renderer.setStyle(btn, 'border-radius', '4px');
-            this.#renderer.setStyle(btn, 'cursor', 'pointer');
+            this.#renderer.setStyle(btn, "margin", "5px");
+            this.#renderer.setStyle(btn, "padding", "8px 12px");
+            this.#renderer.setStyle(btn, "background-color", "#007bff");
+            this.#renderer.setStyle(btn, "color", "#fff");
+            this.#renderer.setStyle(btn, "border", "none");
+            this.#renderer.setStyle(btn, "border-radius", "4px");
+            this.#renderer.setStyle(btn, "cursor", "pointer");
 
             this.#renderer.appendChild(menu, btn);
         });
     }
 
     #addCircle(): void {
-        console.log('Добавить круг');
+        console.log("Добавить круг");
     }
 
     #clearCanvas(): void {
-        console.log('Очистить канвас');
-        this.#polygonsStoreService.clearStore()
+        console.log("Очистить канвас");
+        this.#polygonsStoreService.clearStore();
     }
 
     #deletePolygonOnCanvas(): void {
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
         if (!selectedPolygon) return;
-        this.#polygonsStoreService.removePolygonById(selectedPolygon.id)
+        this.#polygonsStoreService.removePolygonById(selectedPolygon.id);
     }
 
     #copyPolygonOnCanvas(): void {
-        console.log('Дублировать элемент');
+        console.log("Дублировать элемент");
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
         if (!selectedPolygon) return;
 
         const newPolygon = {
             ...selectedPolygon,
             id: generateUniqueId(),
-            vertices: selectedPolygon.vertices.map(vertex => ({
+            vertices: selectedPolygon.vertices.map((vertex) => ({
                 x: vertex.x + this.#offsetX,
-                y: vertex.y + this.#offsetY
-            }))
+                y: vertex.y + this.#offsetY,
+            })),
         };
-        this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, {state: 'Normal'})
+        this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, {
+            state: "Normal",
+        });
         this.#polygonsStoreService.addNewPolygon(newPolygon);
 
-        this.#canvasStateService.updateEditorState({ selectedPolygon: newPolygon, selectedPolygonId: newPolygon.id });
+        this.#canvasStateService.updateEditorState({
+            selectedPolygon: newPolygon,
+            selectedPolygonId: newPolygon.id,
+        });
     }
 }

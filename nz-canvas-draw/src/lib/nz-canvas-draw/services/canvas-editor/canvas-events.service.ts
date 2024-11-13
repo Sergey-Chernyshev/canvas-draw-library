@@ -1,23 +1,24 @@
-import { findPointInPolygonVertex, isPointInCircle, isPointInPolygon } from '../utils/coordinates-utils.utils';
-import { CanvasDotCoordinate, CanvasPolygon } from '../element/models/element.interface';
-import { inject, Injectable, OnDestroy } from '@angular/core';
-import { CanvasService } from '../canvas.service';
-import { CanvasStateService } from './canvas-state.service';
-import { PolygonsStoreService } from '../element/polygons-store.service';
-import { EditorState } from './models/canvas-editor.interface';
-import { fromEvent, map, Subject, switchMap, tap, throttleTime } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { CanvasRenderUtilsService } from './canvas-render-utils.service';
+import { findPointInPolygonVertex, isPointInPolygon } from "../utils/coordinates-utils.utils";
+import type { CanvasDotCoordinate, CanvasPolygon } from "../element/models/element.interface";
+import type { OnDestroy } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
+import { CanvasService } from "../canvas.service";
+import { CanvasStateService } from "./canvas-state.service";
+import { PolygonsStoreService } from "../element/polygons-store.service";
+import type { EditorState } from "./models/canvas-editor.interface";
+import { fromEvent, map, Subject, switchMap, tap, throttleTime } from "rxjs";
+import { takeUntil } from "rxjs/operators";
+import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 
 enum DragState {
-    None = 'none',
-    Canvas = 'canvas',
-    Polygon = 'polygon',
-    Vertex = 'vertex'
-};
+    None = "none",
+    Canvas = "canvas",
+    Polygon = "polygon",
+    Vertex = "vertex",
+}
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: "root",
 })
 export class CanvasEventsService implements OnDestroy {
     readonly #canvasService = inject(CanvasService);
@@ -47,36 +48,23 @@ export class CanvasEventsService implements OnDestroy {
         this.destroy$.complete();
     }
 
-    private updateFPS(): void {
-        const currentTime = performance.now();
-        const delta = (currentTime - this.lastFrameTime) / 1000; // Время между кадрами в секундах
-        this.frames++;
-
-        if (delta >= 0.2) { // Обновляем FPS каждую секунду
-            this.fps = this.frames / delta;
-            this.frames = 0;
-            this.lastFrameTime = currentTime;
-            console.log(`FPS: ${Math.round(this.fps)}`);
-        }
-    }
-
-
     initListeners(): void {
         const canvasRef = this.#canvasService.canvasRef?.nativeElement;
         if (!canvasRef) {
             return;
         }
 
-        const mousedown$ = fromEvent<MouseEvent>(canvasRef, 'mousedown');
-        const mousemove$ = fromEvent<MouseEvent>(window, 'mousemove').pipe(throttleTime(1));
-        const mouseup$ = fromEvent<MouseEvent>(window, 'mouseup');
+        const mousedown$ = fromEvent<MouseEvent>(canvasRef, "mousedown");
+        const mousemove$ = fromEvent<MouseEvent>(window, "mousemove").pipe(throttleTime(1));
+        const mouseup$ = fromEvent<MouseEvent>(window, "mouseup");
 
         mousedown$
             .pipe(
                 takeUntil(this.destroy$),
                 switchMap((startEvent) => {
                     const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
-                    const startCanvasX = (startEvent.clientX - canvasRef.getBoundingClientRect().left - offsetX) / scale;
+                    const startCanvasX =
+                        (startEvent.clientX - canvasRef.getBoundingClientRect().left - offsetX) / scale;
                     const startCanvasY = (startEvent.clientY - canvasRef.getBoundingClientRect().top - offsetY) / scale;
 
                     this.startX = startCanvasX;
@@ -89,13 +77,20 @@ export class CanvasEventsService implements OnDestroy {
                     this.prevClientX = startEvent.clientX;
                     this.prevClientY = startEvent.clientY;
 
-                    const canvasCoordinates = { x: this.startX, y: this.startY };
+                    const canvasCoordinates = {
+                        x: this.startX,
+                        y: this.startY,
+                    };
                     const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
                     let isOnSelectedPolygon = false;
                     let isOnSelectedPolygonVertex: number | null = null;
                     if (selectedPolygon) {
                         isOnSelectedPolygon = isPointInPolygon(canvasCoordinates, selectedPolygon.vertices);
-                        isOnSelectedPolygonVertex = findPointInPolygonVertex(canvasCoordinates, selectedPolygon.vertices, 10);
+                        isOnSelectedPolygonVertex = findPointInPolygonVertex(
+                            canvasCoordinates,
+                            selectedPolygon.vertices,
+                            10
+                        );
                     }
 
                     if (isOnSelectedPolygonVertex !== null) {
@@ -108,7 +103,7 @@ export class CanvasEventsService implements OnDestroy {
                     }
 
                     return mousemove$.pipe(
-                        map(moveEvent => {
+                        map((moveEvent) => {
                             // Вычисляем дельту перемещения курсора
                             const deltaX = moveEvent.clientX - this.prevClientX;
                             const deltaY = moveEvent.clientY - this.prevClientY;
@@ -123,10 +118,10 @@ export class CanvasEventsService implements OnDestroy {
                                 y: canvasCoordinates.y - this.startY,
                                 deltaX,
                                 deltaY,
-                                moveEvent: moveEvent
+                                moveEvent: moveEvent,
                             };
                         }),
-                        tap(event => {
+                        tap((event) => {
                             const distance = Math.sqrt(event.x * event.x + event.y * event.y);
                             if (!this.isDragging && distance > this.dragThreshold) {
                                 this.isDragging = true;
@@ -153,6 +148,52 @@ export class CanvasEventsService implements OnDestroy {
             .subscribe();
     }
 
+    #getCanvasCoordinates(event: MouseEvent | TouchEvent): {
+        x: number;
+        y: number;
+    } {
+        const canvasRef = this.#canvasService.canvasRef;
+        if (!canvasRef || !canvasRef.nativeElement) {
+            throw new Error("Canvas element is not available");
+        }
+
+        const canvasElement = canvasRef.nativeElement;
+        const rect = canvasElement.getBoundingClientRect();
+
+        let clientX: number, clientY: number;
+        if (event instanceof MouseEvent) {
+            clientX = event.clientX;
+            clientY = event.clientY;
+        } else if (event instanceof TouchEvent && event.touches.length > 0) {
+            clientX = event.touches[0].clientX;
+            clientY = event.touches[0].clientY;
+        } else {
+            throw new Error("Unsupported event type");
+        }
+
+        const x =
+            (clientX - rect.left - this.#canvasStateService.transformState.offsetX) /
+            this.#canvasStateService.transformState.scale;
+        const y =
+            (clientY - rect.top - this.#canvasStateService.transformState.offsetY) /
+            this.#canvasStateService.transformState.scale;
+
+        return { x, y };
+    }
+
+    private updateFPS(): void {
+        const currentTime = performance.now();
+        const delta = (currentTime - this.lastFrameTime) / 1000;
+        this.frames++;
+
+        if (delta >= 0.2) {
+            this.fps = this.frames / delta;
+            this.frames = 0;
+            this.lastFrameTime = currentTime;
+            console.log(`FPS: ${Math.round(this.fps)}`);
+        }
+    }
+
     #handleCanvasDragging(coords: CanvasDotCoordinate & { deltaX: number; deltaY: number }, event: MouseEvent): void {
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
 
@@ -162,26 +203,27 @@ export class CanvasEventsService implements OnDestroy {
                 this.#canvasStateService.transformState.offsetX += coords.deltaX;
                 this.#canvasStateService.transformState.offsetY += coords.deltaY;
                 break;
-            case DragState.Polygon:
-                { if (!selectedPolygon) return;
+            case DragState.Polygon: {
+                if (!selectedPolygon) return;
 
                 // Вычисляем дельту перемещения в координатах канваса
                 const { x, y } = this.#getCanvasCoordinates(event);
                 const deltaX = x - this.startX;
                 const deltaY = y - this.startY;
 
-                selectedPolygon.vertices = selectedPolygon.vertices.map(vertex => ({
+                selectedPolygon.vertices = selectedPolygon.vertices.map((vertex) => ({
                     x: vertex.x + deltaX,
-                    y: vertex.y + deltaY
+                    y: vertex.y + deltaY,
                 }));
                 this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
 
                 // Обновляем начальные координаты для следующего шага
                 this.startX = x;
                 this.startY = y;
-                break; }
-            case DragState.Vertex:
-                { if (!selectedPolygon || this.draggedVertexIndex === null) return;
+                break;
+            }
+            case DragState.Vertex: {
+                if (!selectedPolygon || this.draggedVertexIndex === null) return;
 
                 // Вычисляем дельту перемещения вершины
                 const vertexCoords = this.#getCanvasCoordinates(event);
@@ -190,21 +232,21 @@ export class CanvasEventsService implements OnDestroy {
 
                 selectedPolygon.vertices[this.draggedVertexIndex] = {
                     x: selectedPolygon.vertices[this.draggedVertexIndex].x + vdeltaX,
-                    y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY
+                    y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY,
                 };
                 this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
 
                 // Обновляем начальные координаты для следующего шага
                 this.startX = vertexCoords.x;
                 this.startY = vertexCoords.y;
-                break; }
+                break;
+            }
             default:
                 break;
         }
 
         this.#canvasRenderUtilsService.redrawCanvas();
         this.updateFPS();
-
     }
 
     #handleCanvasClick(event: MouseEvent | TouchEvent): void {
@@ -219,8 +261,10 @@ export class CanvasEventsService implements OnDestroy {
                     polygonClicked = true;
                     const prevPolygonId = this.#canvasStateService.editorState.selectedPolygonId;
                     if (prevPolygonId === polygon.id) {
-                        this.#canvasStateService.updateEditorState({ stateValue: 'viewMode' });
-                        polygon.state = 'Normal';
+                        this.#canvasStateService.updateEditorState({
+                            stateValue: "viewMode",
+                        });
+                        polygon.state = "Normal";
                         this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
                         this.#canvasRenderUtilsService.redrawCanvas();
                         return;
@@ -228,13 +272,15 @@ export class CanvasEventsService implements OnDestroy {
                     if (prevPolygonId) {
                         const prevPolygon = this.#polygonsStoreService.getPolygonById(prevPolygonId);
                         if (prevPolygon) {
-                            prevPolygon.state = 'Normal';
+                            prevPolygon.state = "Normal";
                             this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
                         }
                     }
-                    this.#canvasStateService.updateEditorState({ stateValue: 'selectMode' });
+                    this.#canvasStateService.updateEditorState({
+                        stateValue: "selectMode",
+                    });
                     this.#canvasStateService.editorState.selectedPolygonId = polygon.id;
-                    polygon.state = 'Selected';
+                    polygon.state = "Selected";
                     this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
                     this.#canvasRenderUtilsService.redrawCanvas();
                     this.updateFPS();
@@ -248,43 +294,15 @@ export class CanvasEventsService implements OnDestroy {
             if (prevPolygonId) {
                 const prevPolygon = this.#polygonsStoreService.getPolygonById(prevPolygonId);
                 if (prevPolygon) {
-                    prevPolygon.state = 'Normal';
+                    prevPolygon.state = "Normal";
                     this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
                 }
             }
-            this.#canvasStateService.updateEditorState({ stateValue: 'viewMode' });
+            this.#canvasStateService.updateEditorState({
+                stateValue: "viewMode",
+            });
             this.#canvasRenderUtilsService.redrawCanvas();
             this.updateFPS();
         }
-    }
-
-    #getCanvasCoordinates(event: MouseEvent | TouchEvent): { x: number; y: number } {
-        const canvasRef = this.#canvasService.canvasRef;
-        if (!canvasRef || !canvasRef.nativeElement) {
-            throw new Error('Canvas element is not available');
-        }
-
-        const canvasElement = canvasRef.nativeElement;
-        const rect = canvasElement.getBoundingClientRect();
-
-        let clientX: number, clientY: number;
-        if (event instanceof MouseEvent) {
-            clientX = event.clientX;
-            clientY = event.clientY;
-        } else if (event instanceof TouchEvent && event.touches.length > 0) {
-            clientX = event.touches[0].clientX;
-            clientY = event.touches[0].clientY;
-        } else {
-            throw new Error('Unsupported event type');
-        }
-
-        const x =
-            (clientX - rect.left - this.#canvasStateService.transformState.offsetX) /
-            this.#canvasStateService.transformState.scale;
-        const y =
-            (clientY - rect.top - this.#canvasStateService.transformState.offsetY) /
-            this.#canvasStateService.transformState.scale;
-
-        return { x, y };
     }
 }

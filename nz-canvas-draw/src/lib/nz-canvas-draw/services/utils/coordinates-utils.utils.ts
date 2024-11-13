@@ -1,8 +1,4 @@
-import { inject } from '@angular/core';
-import { CanvasService } from '../canvas.service';
-import { PolygonsStoreService } from '../element/polygons-store.service';
-import { CanvasStateService } from '../canvas-editor/canvas-state.service';
-import { CanvasDotCoordinate } from '../element/models/element.interface';
+import type { CanvasDotCoordinate } from "../element/models/element.interface";
 
 /**
  * Проверяет, находится ли точка внутри окружности.
@@ -40,25 +36,20 @@ export function findPointInPolygonVertex(
  * @param includeBoundary Определяет, следует ли учитывать точки, находящиеся на границе (по умолчанию false).
  * @returns true, если точка находится внутри полигона (или на границе, если includeBoundary=true), иначе false.
  */
-export function isPointInPolygon(
-    point: CanvasDotCoordinate,
-    vertices: Array<CanvasDotCoordinate>,
-): boolean {
+export function isPointInPolygon(point: CanvasDotCoordinate, vertices: CanvasDotCoordinate[]): boolean {
     let inside = false;
 
     for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-        const xi = vertices[i].x, yi = vertices[i].y;
-        const xj = vertices[j].x, yj = vertices[j].y;
+        const xi = vertices[i].x,
+            yi = vertices[i].y;
+        const xj = vertices[j].x,
+            yj = vertices[j].y;
 
         // Проверка на пересечение для алгоритма лучевого пересечения
-        const intersect = ((yi > point.y) !== (yj > point.y)) &&
-            (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+        const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
 
         if (intersect) inside = !inside;
     }
 
     return inside;
 }
-
-
-

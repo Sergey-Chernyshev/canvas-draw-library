@@ -1,53 +1,57 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
-import { EditorState, TransformState } from './models/canvas-editor.interface';
+import { Injectable } from "@angular/core";
+import type { Observable } from "rxjs";
+import { BehaviorSubject } from "rxjs";
+import type { EditorState, TransformState } from "./models/canvas-editor.interface";
 
-
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class CanvasStateService {
-
     readonly #transformState$ = new BehaviorSubject<TransformState>({
-        scale: 1, offsetX: 0, offsetY: 0
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
     });
 
     readonly #editorState$ = new BehaviorSubject<EditorState>({
-        stateValue: 'viewMode', selectedPolygonId: null, selectedPolygon: null
+        stateValue: "viewMode",
+        selectedPolygonId: null,
+        selectedPolygon: null,
     });
 
-
-    get transformState() {
+    get transformState(): TransformState {
         return this.#transformState$.value;
     }
 
-    get editorState() {
+    get editorState(): EditorState {
         return this.#editorState$.value;
     }
 
-    get transformState$() {
+    get transformState$(): Observable<TransformState> {
         return this.#transformState$.asObservable();
     }
 
-    get editorState$() {
+    get editorState$(): Observable<EditorState> {
         return this.#editorState$.asObservable();
     }
 
     // Функция для обновления состояния трансформации
-    updateTransformState(newState: Partial<TransformState>) {
+    updateTransformState(newState: Partial<TransformState>): void {
         const currentState = this.#transformState$.value;
         this.#transformState$.next({
-            ...currentState, ...newState
+            ...currentState,
+            ...newState,
         });
     }
 
     // Функция для обновления состояния редактора
-    updateEditorState(newState: Partial<EditorState>) {
+    updateEditorState(newState: Partial<EditorState>): void {
         const currentState = this.#editorState$.value;
-        if (newState.stateValue === 'viewMode') {
+        if (newState.stateValue === "viewMode") {
             newState.selectedPolygonId = null;
             newState.selectedPolygon = null;
         }
         this.#editorState$.next({
-            ...currentState, ...newState
+            ...currentState,
+            ...newState,
         });
     }
 }

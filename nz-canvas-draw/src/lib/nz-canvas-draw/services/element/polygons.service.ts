@@ -1,29 +1,34 @@
-import { inject, Injectable } from '@angular/core';
-import { CanvasService } from '../canvas.service';
-import { CanvasPolygon } from './models/element.interface';
-import { PolygonsStoreService } from './polygons-store.service';
-import { generateUniqueId } from '../utils/functions-utils.utils';
+import { inject, Injectable } from "@angular/core";
+import { CanvasService } from "../canvas.service";
+import type { CanvasPolygon } from "./models/element.interface";
+import { PolygonsStoreService } from "./polygons-store.service";
+import { generateUniqueId } from "../utils/functions-utils.utils";
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: "root",
 })
 export class PolygonsService {
     readonly #polygonStylesConfig = {
         default: {
-            strokeStyle: 'black', lineWidth: 1, lineDash: [], fillStyle: 'rgba(0, 0, 0, 0.2)', // Цвет заливки по умолчанию
-            vertexColor: 'black', vertexRadius: 5,
-            lineJoin: 'miter' as CanvasLineJoin, // Указываем тип CanvasLineJoin
-            lineCap: 'butt' as CanvasLineCap // Указываем тип CanvasLineCap
-        }, selected: {
-            strokeStyle: '#D92929',
+            strokeStyle: "black",
+            lineWidth: 1,
+            lineDash: [],
+            fillStyle: "rgba(0, 0, 0, 0.2)", // Цвет заливки по умолчанию
+            vertexColor: "black",
+            vertexRadius: 5,
+            lineJoin: "miter" as CanvasLineJoin, // Указываем тип CanvasLineJoin
+            lineCap: "butt" as CanvasLineCap, // Указываем тип CanvasLineCap
+        },
+        selected: {
+            strokeStyle: "#D92929",
             lineWidth: 2,
             lineDash: [5, 5],
-            fillStyle: '#F7D4D4',
-            vertexColor: '#D92929',
+            fillStyle: "#F7D4D4",
+            vertexColor: "#D92929",
             vertexRadius: 6,
-            lineJoin: 'round' as CanvasLineJoin,
-            lineCap: 'round' as CanvasLineCap
-        }
+            lineJoin: "round" as CanvasLineJoin,
+            lineCap: "round" as CanvasLineCap,
+        },
     };
 
     readonly #canvasService = inject(CanvasService);
@@ -34,12 +39,12 @@ export class PolygonsService {
      * @param vertices Массив координат вершин прямоугольника.
      */
     drawTestPolygon(vertices: Array<{ x: number; y: number }>): void {
-        const ctx = this.#canvasService.ctx
-        if(!ctx){
-            throw new Error('Canvas context is not available');
+        const ctx = this.#canvasService.ctx;
+        if (!ctx) {
+            throw new Error("Canvas context is not available");
         }
         if (vertices.length < 3) {
-            console.error('Прямоугольник должен иметь как минимум 3 вершины.');
+            console.error("Прямоугольник должен иметь как минимум 3 вершины.");
             return;
         }
         const closedVertices = [...vertices];
@@ -56,15 +61,15 @@ export class PolygonsService {
         }
 
         ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 128, 255, 0.5)'; // Полупрозрачная заливка
+        ctx.fillStyle = "rgba(0, 128, 255, 0.5)"; // Полупрозрачная заливка
         ctx.fill();
 
-        ctx.strokeStyle = 'black'; // Цвет обводки
+        ctx.strokeStyle = "black"; // Цвет обводки
         ctx.lineWidth = 2; // Толщина линии
         ctx.stroke();
 
-        this.drawVertices(closedVertices, 'black');
-        this.savePolygonData(vertices)
+        this.drawVertices(closedVertices, "black");
+        this.savePolygonData(vertices);
     }
 
     /**
@@ -76,14 +81,15 @@ export class PolygonsService {
         const canvasRef = this.#canvasService.canvasRef;
 
         if (!ctx || !canvasRef) {
-            throw new Error('Canvas context or canvasRef is not available');
+            throw new Error("Canvas context or canvasRef is not available");
         }
 
         const vertices = polygon.vertices;
         if (vertices.length < 3) return;
 
         // Определяем стили на основе состояния полигона
-        const styles = polygon.state === 'Selected' ? this.#polygonStylesConfig.selected : this.#polygonStylesConfig.default;
+        const styles =
+            polygon.state === "Selected" ? this.#polygonStylesConfig.selected : this.#polygonStylesConfig.default;
 
         ctx.beginPath();
         ctx.moveTo(vertices[0].x, vertices[0].y);
@@ -108,17 +114,16 @@ export class PolygonsService {
         this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
     }
 
-
     /**
      * Рисует вершины полигона на канвасе.
      * @param vertices Массив координат вершин полигона.
      * @param color Цвет вершин (по умолчанию 'black').
      * @param radius
      */
-    drawVertices(vertices: Array<{ x: number; y: number }>, color = 'black', radius = 5): void {
+    drawVertices(vertices: Array<{ x: number; y: number }>, color = "black", radius = 5): void {
         const ctx = this.#canvasService.ctx;
         if (!ctx) {
-            throw new Error('Canvas context is not available');
+            throw new Error("Canvas context is not available");
         }
 
         vertices.forEach((point) => {
@@ -138,10 +143,13 @@ export class PolygonsService {
     savePolygonData(vertices: Array<{ x: number; y: number }>): CanvasPolygon {
         const newPolygon: CanvasPolygon = {
             id: generateUniqueId(),
-            vertices: vertices.map(vertex => ({ ...vertex })), // Копирование вершин
+            vertices: vertices.map((vertex) => ({ ...vertex })), // Копирование вершин
             style: {
-                fillColor: 'rgba(0, 128, 255, 0.5)', strokeColor: 'black', lineWidth: 2
-            }, state: 'Normal'
+                fillColor: "rgba(0, 128, 255, 0.5)",
+                strokeColor: "black",
+                lineWidth: 2,
+            },
+            state: "Normal",
         };
 
         this.#polygonStoreService.addNewPolygon(newPolygon);
@@ -185,5 +193,4 @@ export class PolygonsService {
     //     // Рисуем вершины
     //     this.drawVertices(vertices, drawVerticesColor);
     // }
-
 }
