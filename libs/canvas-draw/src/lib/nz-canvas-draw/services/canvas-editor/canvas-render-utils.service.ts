@@ -17,7 +17,6 @@ export class CanvasRenderUtilsService {
     readonly #canvasStateService = inject(CanvasStateService);
 
     constructor() {
-        console.log("change data");
         this.#polygonsStoreService.selectAllPolygons$.pipe(takeUntilDestroyed()).subscribe(() => {
             if (this.#canvasService.ctx && this.#canvasService.canvasRef) {
                 this.redrawCanvas();
@@ -51,6 +50,10 @@ export class CanvasRenderUtilsService {
      * Метод для перерисовки канваса.
      */
     redrawCanvas(): void {
+        requestAnimationFrame(() => this.redrawCanvasWithAnimationFrame());
+    }
+
+    private redrawCanvasWithAnimationFrame() {
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
 

@@ -1,8 +1,9 @@
 import type { ElementRef, Renderer2 } from "@angular/core";
 import { inject, Injectable, RendererFactory2 } from "@angular/core";
-import { generateUniqueId } from "../utils/functions-utils.utils";
+
+import { CanvasStateService, EditorMode } from "../canvas-editor";
 import { PolygonsStoreService } from "../element/polygons-store.service";
-import { CanvasStateService } from "../canvas-editor/";
+import { generateUniqueId } from "../utils/functions-utils.utils";
 
 @Injectable({ providedIn: "root" })
 export class CanvasControlService {
@@ -10,7 +11,7 @@ export class CanvasControlService {
     readonly #polygonsStoreService = inject(PolygonsStoreService);
     readonly #canvasStateService = inject(CanvasStateService);
 
-    #renderer: Renderer2 = this.#rendererFactory.createRenderer(null, null);
+    readonly #renderer: Renderer2 = this.#rendererFactory.createRenderer(null, null);
 
     readonly #offsetX = 20;
     readonly #offsetY = 30;
@@ -18,7 +19,30 @@ export class CanvasControlService {
     setupCanvasEditorMenu(menuRef: ElementRef<HTMLDivElement>): void {
         const menu = menuRef.nativeElement;
         const buttons = [
-            { label: "Круг", action: () => this.#addCircle() },
+            {
+                label: "Линия",
+                action: () => {
+                    this.#canvasStateService.updateEditorState({ editorMode: EditorMode.DrawLine });
+                },
+            },
+            {
+                label: "Полигон",
+                action: () => {
+                    this.#canvasStateService.updateEditorState({ editorMode: EditorMode.DrawPolygon });
+                },
+            },
+            {
+                label: "Круг",
+                action: () => {
+                    this.#canvasStateService.updateEditorState({ editorMode: EditorMode.DrawCircle });
+                },
+            },
+            {
+                label: "Текст",
+                action: () => {
+                    this.#canvasStateService.updateEditorState({ editorMode: EditorMode.DrawText });
+                },
+            },
             {
                 label: "Очистить холст",
                 action: () => this.#clearCanvas(),
@@ -61,14 +85,21 @@ export class CanvasControlService {
 
     #deletePolygonOnCanvas(): void {
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
-        if (!selectedPolygon) return;
+
+        if (!selectedPolygon) {
+            return;
+        }
+
         this.#polygonsStoreService.removePolygonById(selectedPolygon.id);
     }
 
     #copyPolygonOnCanvas(): void {
         console.log("Дублировать элемент");
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
-        if (!selectedPolygon) return;
+
+        if (!selectedPolygon) {
+            return;
+        }
 
         const newPolygon = {
             ...selectedPolygon,
@@ -78,6 +109,7 @@ export class CanvasControlService {
                 y: vertex.y + this.#offsetY,
             })),
         };
+
         this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, {
             state: "Normal",
         });
