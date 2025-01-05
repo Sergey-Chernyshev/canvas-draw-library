@@ -15,7 +15,8 @@
         "skipDefaultLibCheck": true,
         "baseUrl": ".",
         "paths": {
-            "@nz-ui/nz-canvas-draw": ["libs/canvas-draw/src/index.ts"]
+            "@nz/nz-canvas-draw": ["libs/canvas-draw/src/index.ts"],
+            "@nz/key-shortcuts": ["libs/key-shortcuts/src/index.ts"]
         }
     },
     "exclude": ["node_modules", "tmp"]

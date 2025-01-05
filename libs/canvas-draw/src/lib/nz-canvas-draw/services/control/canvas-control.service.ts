@@ -2,7 +2,7 @@ import type { ElementRef, Renderer2 } from "@angular/core";
 import { inject, Injectable, RendererFactory2 } from "@angular/core";
 import { generateUniqueId } from "../utils/functions-utils.utils";
 import { PolygonsStoreService } from "../element/polygons-store.service";
-import { CanvasStateService } from "../canvas-editor/canvas-state.service";
+import { CanvasStateService } from "../canvas-editor/";
 
 @Injectable({ providedIn: "root" })
 export class CanvasControlService {

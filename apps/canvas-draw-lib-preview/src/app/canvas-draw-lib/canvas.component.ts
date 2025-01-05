@@ -1,8 +1,7 @@
+import { CommonModule } from "@angular/common";
 import type { AfterViewInit, ElementRef } from "@angular/core";
 import { Component, inject, ViewChild } from "@angular/core";
-import { CommonModule } from "@angular/common";
-import type { CanvasSettings } from "@nz-ui/nz-canvas-draw";
-import { CanvasInitService, PolygonsService } from "@nz-ui/nz-canvas-draw";
+import { CanvasInitService, CanvasSettings, PolygonsService } from "@nz/nz-canvas-draw";
 
 @Component({
     selector: "app-canvas",
@@ -12,8 +11,11 @@ import { CanvasInitService, PolygonsService } from "@nz-ui/nz-canvas-draw";
     styleUrls: ["./canvas.component.less"],
 })
 export class CanvasComponent implements AfterViewInit {
-    @ViewChild("canvas", { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
-    @ViewChild("canvasMenu") canvasMenu!: ElementRef<HTMLDivElement>;
+    @ViewChild("canvas", { static: true })
+    canvasRef!: ElementRef<HTMLCanvasElement>;
+
+    @ViewChild("canvasMenu")
+    canvasMenu!: ElementRef<HTMLDivElement>;
 
     readonly #canvasInitService = inject(CanvasInitService);
     readonly #canvasElementsService = inject(PolygonsService);

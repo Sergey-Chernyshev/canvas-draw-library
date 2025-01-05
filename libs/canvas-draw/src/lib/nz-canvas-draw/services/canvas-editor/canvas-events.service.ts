@@ -1,14 +1,17 @@
-import { findPointInPolygonVertex, isPointInPolygon } from "../utils/coordinates-utils.utils";
-import type { CanvasDotCoordinate, CanvasPolygon } from "../element/models/element.interface";
-import type { OnDestroy } from "@angular/core";
-import { inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable, OnDestroy } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { KeyShortcutsService } from "@nz/key-shortcuts";
+import { fromEvent, map, Subject, switchMap, takeUntil, tap } from "rxjs";
+
 import { CanvasService } from "../canvas.service";
-import { CanvasStateService } from "./canvas-state.service";
+import { CanvasPolygonTypes } from "../element/models/element.interface";
+import { PolygonsService } from "../element/polygons.service";
 import { PolygonsStoreService } from "../element/polygons-store.service";
-import type { EditorState } from "./models/canvas-editor.interface";
-import { fromEvent, map, Subject, switchMap, tap, throttleTime } from "rxjs";
-import { takeUntil } from "rxjs/operators";
+import { findPointInPolygonVertex } from "../utils/coordinates-utils.utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
+import { CanvasStateService } from "./canvas-state.service";
+import { DrawModeService } from "./draw-mode/draw-mode.service";
+import { EditorMode, Point, PointerMoveData } from "./models";
 
 enum DragState {
     None = "none",
@@ -17,160 +20,395 @@ enum DragState {
     Vertex = "vertex",
 }
 
-@Injectable({
-    providedIn: "root",
-})
+@Injectable({ providedIn: "root" })
 export class CanvasEventsService implements OnDestroy {
+    private dragState = DragState.None;
+    private startX = 0;
+    private startY = 0;
+    private prevClientX = 0;
+    private prevClientY = 0;
+    private isDragging = false;
+    private draggedVertexIndex: number | null = null;
+    private readonly dragThreshold = 1;
+    private lastFrameTime = performance.now();
+    private frames = 0;
+    private fps = 0;
+    readonly destroy$ = new Subject<void>();
     readonly #canvasService = inject(CanvasService);
     readonly #canvasStateService = inject(CanvasStateService);
     readonly #polygonsStoreService = inject(PolygonsStoreService);
     readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
+    readonly #destroyRef = inject(DestroyRef);
+    readonly #keyShortcutsService = inject(KeyShortcutsService);
+    readonly #polygonService = inject(PolygonsService);
+    readonly #drawModeService = inject(DrawModeService);
+    #isCursorOnLastVertex = false;
 
-    private isDragging = false;
-    private startX = 0;
-    private startY = 0;
-    private dragThreshold = 1;
-    private dragState: DragState = DragState.None;
-    private draggedVertexIndex: number | null = null;
+    constructor() {
+        this.#keyShortcutsService.registerShortcut(
+            ["Escape"],
+            () => {
+                const draftPolygon = this.#canvasStateService.editorState.draftPolygon;
 
-    // Добавлены новые свойства для хранения начальных значений
-    private prevClientX = 0;
-    private prevClientY = 0;
+                if (draftPolygon) {
+                    console.log(draftPolygon);
+                    this.#polygonsStoreService.removePolygonById(draftPolygon.id);
+                    this.#drawModeService.finalizePreviewLine();
+                }
 
-    private lastFrameTime = performance.now();
-    private frames = 0;
-    private fps = 0;
+                this.#deselectElement();
+            },
+            true,
+        );
 
-    private readonly destroy$ = new Subject<void>();
+        this.#keyShortcutsService.registerShortcut(
+            ["P"],
+            () => {
+                const editorState = this.#canvasStateService.editorState.editorMode;
 
-    ngOnDestroy() {
+                if (editorState !== EditorMode.DrawPolygon) {
+                    this.#canvasStateService.updateEditorState({ editorMode: "drawPolygon" });
+                }
+            },
+            true,
+        );
+
+        this.#keyShortcutsService.registerShortcut(
+            ["L"],
+            () => {
+                const editorState = this.#canvasStateService.editorState.editorMode;
+
+                if (editorState !== EditorMode.DrawLine) {
+                    this.#canvasStateService.updateEditorState({ editorMode: "drawLine" });
+                }
+            },
+            true,
+        );
+
+        this.#keyShortcutsService.registerShortcut(
+            ["Enter"],
+            () => {
+                this.endDraw();
+            },
+            true,
+        );
+    }
+
+    ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
     }
 
     initListeners(): void {
         const canvasRef = this.#canvasService.canvasRef?.nativeElement;
+
         if (!canvasRef) {
             return;
         }
 
-        const mousedown$ = fromEvent<MouseEvent>(canvasRef, "mousedown");
-        const mousemove$ = fromEvent<MouseEvent>(window, "mousemove").pipe(throttleTime(1));
-        const mouseup$ = fromEvent<MouseEvent>(window, "mouseup");
+        fromEvent<PointerEvent>(canvasRef, "pointermove")
+            .pipe(takeUntilDestroyed(this.#destroyRef))
+            .subscribe((event) => {
+                this.onPointerMoveNoDownKey(event);
+            });
 
-        mousedown$
+        fromEvent<PointerEvent>(canvasRef, "pointerdown")
             .pipe(
-                takeUntil(this.destroy$),
                 switchMap((startEvent) => {
-                    const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
-                    const startCanvasX =
-                        (startEvent.clientX - canvasRef.getBoundingClientRect().left - offsetX) / scale;
-                    const startCanvasY = (startEvent.clientY - canvasRef.getBoundingClientRect().top - offsetY) / scale;
+                    this.onPointerDown(startEvent);
 
-                    this.startX = startCanvasX;
-                    this.startY = startCanvasY;
-                    this.isDragging = false;
-                    this.dragState = DragState.None;
-                    this.draggedVertexIndex = null;
-
-                    // Сохраняем начальные смещения и позиции курсора
-                    this.prevClientX = startEvent.clientX;
-                    this.prevClientY = startEvent.clientY;
-
-                    const canvasCoordinates = {
-                        x: this.startX,
-                        y: this.startY,
-                    };
-                    const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
-                    let isOnSelectedPolygon = false;
-                    let isOnSelectedPolygonVertex: number | null = null;
-                    if (selectedPolygon) {
-                        isOnSelectedPolygon = isPointInPolygon(canvasCoordinates, selectedPolygon.vertices);
-                        isOnSelectedPolygonVertex = findPointInPolygonVertex(
-                            canvasCoordinates,
-                            selectedPolygon.vertices,
-                            10
-                        );
-                    }
-
-                    if (isOnSelectedPolygonVertex !== null) {
-                        this.dragState = DragState.Vertex;
-                        this.draggedVertexIndex = isOnSelectedPolygonVertex;
-                    } else if (isOnSelectedPolygon) {
-                        this.dragState = DragState.Polygon;
-                    } else {
-                        this.dragState = DragState.Canvas;
-                    }
-
-                    return mousemove$.pipe(
-                        map((moveEvent) => {
-                            // Вычисляем дельту перемещения курсора
-                            const deltaX = moveEvent.clientX - this.prevClientX;
-                            const deltaY = moveEvent.clientY - this.prevClientY;
-
-                            // Обновляем предыдущие позиции курсора
-                            this.prevClientX = moveEvent.clientX;
-                            this.prevClientY = moveEvent.clientY;
-
-                            const canvasCoordinates = this.#getCanvasCoordinates(moveEvent);
-                            return {
-                                x: canvasCoordinates.x - this.startX,
-                                y: canvasCoordinates.y - this.startY,
-                                deltaX,
-                                deltaY,
-                                moveEvent: moveEvent,
-                            };
-                        }),
-                        tap((event) => {
-                            const distance = Math.sqrt(event.x * event.x + event.y * event.y);
-                            if (!this.isDragging && distance > this.dragThreshold) {
-                                this.isDragging = true;
-                            }
-                            if (this.isDragging) {
-                                this.#handleCanvasDragging(event, event.moveEvent);
-                            }
-                        }),
+                    return fromEvent<PointerEvent>(window, "pointermove").pipe(
+                        map((moveEvent) => this.getMoveData(moveEvent)),
+                        tap((moveData) => this.onPointerMove(moveData)),
                         takeUntil(
-                            mouseup$.pipe(
-                                tap(() => {
-                                    if (!this.isDragging) {
-                                        this.#handleCanvasClick(startEvent);
-                                    }
-                                    this.isDragging = false;
-                                    this.dragState = DragState.None;
-                                    this.draggedVertexIndex = null;
-                                })
-                            )
-                        )
+                            fromEvent<PointerEvent>(window, "pointerup").pipe(
+                                tap((endEvent) => this.onPointerUp(endEvent, startEvent)),
+                            ),
+                        ),
                     );
-                })
+                }),
+                takeUntilDestroyed(this.#destroyRef),
             )
             .subscribe();
     }
 
-    #getCanvasCoordinates(event: MouseEvent | TouchEvent): {
-        x: number;
-        y: number;
-    } {
+    private endDraw(): void {
+        const editorState = this.#canvasStateService.editorState;
+
+        if (editorState.editorMode === "drawPolygon" && editorState.draftPolygon) {
+            this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
+                type: CanvasPolygonTypes.Polygon,
+            });
+            console.log("Рисование полигона окончено");
+        }
+
+        if (editorState.editorMode === "drawLine" && editorState.draftPolygon) {
+            this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
+                type: CanvasPolygonTypes.Line,
+            });
+            console.log("Рисование линии окончено");
+        }
+
+        this.#deselectElement();
+        this.#isCursorOnLastVertex = false;
+        this.#drawModeService.finalizePreviewLine();
+        this.#drawModeService.removeTemporaryPolygon();
+    }
+
+    private onPointerDown(event: PointerEvent): void {
+        const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
+        const rect = this.#canvasService.canvasRef?.nativeElement.getBoundingClientRect();
+
+        if (!rect) {
+            return;
+        }
+
+        const startCanvasX = (event.clientX - rect.left - offsetX) / scale;
+        const startCanvasY = (event.clientY - rect.top - offsetY) / scale;
+
+        this.startX = startCanvasX;
+        this.startY = startCanvasY;
+        this.prevClientX = event.clientX;
+        this.prevClientY = event.clientY;
+        this.isDragging = false;
+        this.dragState = DragState.None;
+        this.draggedVertexIndex = null;
+        const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+        const canvasCoordinates = { x: startCanvasX, y: startCanvasY };
+        let isOnSelectedPolygon = false;
+        let isOnSelectedPolygonVertex: number | null = null;
+
+        if (selectedPolygon) {
+            isOnSelectedPolygon = this.isPointInPolygon(canvasCoordinates, selectedPolygon.vertices);
+            isOnSelectedPolygonVertex = this.findPointInPolygonVertex(canvasCoordinates, selectedPolygon.vertices, 10);
+        }
+
+        if (isOnSelectedPolygonVertex !== null) {
+            this.dragState = DragState.Vertex;
+            this.draggedVertexIndex = isOnSelectedPolygonVertex;
+        } else if (isOnSelectedPolygon) {
+            this.dragState = DragState.Polygon;
+        } else {
+            this.dragState = DragState.Canvas;
+        }
+    }
+
+    private onPointerMove(data: PointerMoveData): void {
+        const distance = Math.sqrt(data.x * data.x + data.y * data.y);
+
+        if (!this.isDragging && distance > this.dragThreshold) {
+            this.isDragging = true;
+        }
+
+        if (!this.isDragging) {
+            return;
+        }
+
+        this.handleDragging(data);
+    }
+
+    private onPointerUp(event: PointerEvent, startEvent: PointerEvent): void {
+        if (!this.isDragging) {
+            this.handleClick(startEvent);
+        }
+
+        this.isDragging = false;
+        this.dragState = DragState.None;
+        this.draggedVertexIndex = null;
+    }
+
+    private getMoveData(event: PointerEvent): PointerMoveData {
+        const deltaX = event.clientX - this.prevClientX;
+        const deltaY = event.clientY - this.prevClientY;
+
+        this.prevClientX = event.clientX;
+        this.prevClientY = event.clientY;
+        const { x, y } = this.getCanvasCoordinates(event);
+
+        return {
+            x: x - this.startX,
+            y: y - this.startY,
+            deltaX,
+            deltaY,
+        };
+    }
+
+    private handleDragging(coords: PointerMoveData): void {
+        const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+
+        if (this.dragState === DragState.Canvas) {
+            this.#canvasStateService.transformState.offsetX += coords.deltaX;
+            this.#canvasStateService.transformState.offsetY += coords.deltaY;
+        }
+
+        if (this.dragState === DragState.Polygon && selectedPolygon) {
+            const { x, y } = { x: this.startX + coords.x, y: this.startY + coords.y };
+            const deltaX = x - this.startX;
+            const deltaY = y - this.startY;
+
+            selectedPolygon.vertices = selectedPolygon.vertices.map((v) => ({
+                x: v.x + deltaX,
+                y: v.y + deltaY,
+            }));
+            this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
+            this.startX = x;
+            this.startY = y;
+        }
+
+        if (this.dragState === DragState.Vertex && selectedPolygon && this.draggedVertexIndex !== null) {
+            const vertexCoords = { x: this.startX + coords.x, y: this.startY + coords.y };
+            const vdeltaX = vertexCoords.x - this.startX;
+            const vdeltaY = vertexCoords.y - this.startY;
+
+            selectedPolygon.vertices[this.draggedVertexIndex] = {
+                x: selectedPolygon.vertices[this.draggedVertexIndex].x + vdeltaX,
+                y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY,
+            };
+            this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
+            this.startX = vertexCoords.x;
+            this.startY = vertexCoords.y;
+        }
+
+        this.#canvasRenderUtilsService.redrawCanvas();
+        this.updateFPS();
+    }
+
+    private onPointerMoveNoDownKey(event: PointerEvent): void {
+        const mode = this.#canvasStateService.editorState.editorMode;
+
+        if (mode === "drawPolygon") {
+            const cursorVertex = this.getCanvasCoordinates(event);
+            const draftPolygon = this.#canvasStateService.editorState.draftPolygon;
+
+            if (draftPolygon && draftPolygon.vertices.length > 0) {
+                const lastVertex = draftPolygon.vertices[draftPolygon.vertices.length - 1];
+
+                this.#drawModeService.createOrUpdatePreviewLine(lastVertex, cursorVertex);
+
+                const isOnVertex = findPointInPolygonVertex(cursorVertex, [draftPolygon.vertices[0]], 5);
+
+                if (isOnVertex === 0 && draftPolygon.vertices.length > 2) {
+                    this.#drawModeService.addTemporaryPolygon(draftPolygon);
+                    this.#isCursorOnLastVertex = true;
+                } else {
+                    this.#drawModeService.removeTemporaryPolygon();
+                    this.#isCursorOnLastVertex = false;
+                }
+            }
+        }
+    }
+
+    private handleClick(event: PointerEvent): void {
+        const mode = this.#canvasStateService.editorState.editorMode;
+        const { x, y } = this.getCanvasCoordinates(event);
+
+        console.log(mode);
+
+        if (mode === "drawPolygon" || mode === "drawLine") {
+            console.log("drawPolygon");
+
+            const draftPolygon = this.#canvasStateService.editorState.draftPolygon;
+
+            if (!draftPolygon) {
+                console.log("draftPolygon: ", this.#canvasStateService.editorState.draftPolygon, x, y);
+
+                const newPolygon = this.#polygonService.savePolygonData([{ x, y }], CanvasPolygonTypes.Line);
+
+                newPolygon.state = "Selected";
+
+                this.#canvasStateService.editorState.selectedPolygonId = newPolygon.id;
+                this.#canvasStateService.editorState.draftPolygon = newPolygon;
+                console.log(this.#canvasStateService.editorState.draftPolygon);
+                this.#canvasRenderUtilsService.redrawCanvas();
+
+                return;
+            }
+
+            if (mode === "drawPolygon" && this.#isCursorOnLastVertex) {
+                this.endDraw();
+
+                return;
+            }
+
+            draftPolygon.vertices.push({ x, y });
+            this.#polygonsStoreService.updatePolygonById(draftPolygon.id, draftPolygon);
+            this.#canvasRenderUtilsService.redrawCanvas();
+
+            return;
+        }
+
+        let polygonClicked = false;
+
+        this.#polygonsStoreService.selectAllPolygons.forEach((polygon) => {
+            if (!mode) {
+                return;
+            }
+
+            const inside = this.isPointInPolygon({ x, y }, polygon.vertices);
+
+            if (inside) {
+                polygonClicked = true;
+                const prevId = this.#canvasStateService.editorState.selectedPolygonId;
+
+                if (prevId === polygon.id) {
+                    this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });
+                    polygon.state = "Normal";
+                    this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
+                    this.#canvasRenderUtilsService.redrawCanvas();
+
+                    return;
+                }
+
+                if (prevId) {
+                    const prevPolygon = this.#polygonsStoreService.getPolygonById(prevId);
+
+                    if (prevPolygon) {
+                        prevPolygon.state = "Normal";
+                        this.#polygonsStoreService.updatePolygonById(prevId, prevPolygon);
+                    }
+                }
+
+                this.#canvasStateService.updateEditorState({ editorMode: "selectMode" });
+                this.#canvasStateService.editorState.selectedPolygonId = polygon.id;
+                polygon.state = "Selected";
+                this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
+                this.#canvasRenderUtilsService.redrawCanvas();
+                this.updateFPS();
+            }
+        });
+
+        if (!polygonClicked) {
+            this.#deselectElement();
+        }
+    }
+
+    #deselectElement(): void {
+        const prevPolygonId = this.#canvasStateService.editorState.selectedPolygonId;
+
+        if (prevPolygonId) {
+            const prevPolygon = this.#polygonsStoreService.getPolygonById(prevPolygonId);
+
+            if (prevPolygon) {
+                prevPolygon.state = "Normal";
+                this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
+            }
+
+            this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });
+            this.#canvasRenderUtilsService.redrawCanvas();
+            this.updateFPS();
+        }
+    }
+
+    private getCanvasCoordinates(event: PointerEvent): Point {
         const canvasRef = this.#canvasService.canvasRef;
-        if (!canvasRef || !canvasRef.nativeElement) {
+
+        if (!canvasRef?.nativeElement) {
             throw new Error("Canvas element is not available");
         }
 
-        const canvasElement = canvasRef.nativeElement;
-        const rect = canvasElement.getBoundingClientRect();
-
-        let clientX: number, clientY: number;
-        if (event instanceof MouseEvent) {
-            clientX = event.clientX;
-            clientY = event.clientY;
-        } else if (event instanceof TouchEvent && event.touches.length > 0) {
-            clientX = event.touches[0].clientX;
-            clientY = event.touches[0].clientY;
-        } else {
-            throw new Error("Unsupported event type");
-        }
-
+        const rect = canvasRef.nativeElement.getBoundingClientRect();
+        const clientX = event.clientX;
+        const clientY = event.clientY;
         const x =
             (clientX - rect.left - this.#canvasStateService.transformState.offsetX) /
             this.#canvasStateService.transformState.scale;
@@ -184,125 +422,46 @@ export class CanvasEventsService implements OnDestroy {
     private updateFPS(): void {
         const currentTime = performance.now();
         const delta = (currentTime - this.lastFrameTime) / 1000;
+
         this.frames++;
 
         if (delta >= 0.2) {
             this.fps = this.frames / delta;
             this.frames = 0;
             this.lastFrameTime = currentTime;
-            console.log(`FPS: ${Math.round(this.fps)}`);
+            console.log(Math.round(this.fps));
         }
     }
 
-    #handleCanvasDragging(coords: CanvasDotCoordinate & { deltaX: number; deltaY: number }, event: MouseEvent): void {
-        const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+    private isPointInPolygon(point: Point, vertices: Point[]): boolean {
+        let inside = false;
 
-        switch (this.dragState) {
-            case DragState.Canvas:
-                // Обновляем смещения канваса на основе дельты перемещения курсора
-                this.#canvasStateService.transformState.offsetX += coords.deltaX;
-                this.#canvasStateService.transformState.offsetY += coords.deltaY;
-                break;
-            case DragState.Polygon: {
-                if (!selectedPolygon) return;
+        for (let i = 0; i < vertices.length; i++) {
+            const j = i === vertices.length - 1 ? 0 : i + 1;
+            const xi = vertices[i].x;
+            const yi = vertices[i].y;
+            const xj = vertices[j].x;
+            const yj = vertices[j].y;
+            const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
 
-                // Вычисляем дельту перемещения в координатах канваса
-                const { x, y } = this.#getCanvasCoordinates(event);
-                const deltaX = x - this.startX;
-                const deltaY = y - this.startY;
-
-                selectedPolygon.vertices = selectedPolygon.vertices.map((vertex) => ({
-                    x: vertex.x + deltaX,
-                    y: vertex.y + deltaY,
-                }));
-                this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
-
-                // Обновляем начальные координаты для следующего шага
-                this.startX = x;
-                this.startY = y;
-                break;
+            if (intersect) {
+                inside = !inside;
             }
-            case DragState.Vertex: {
-                if (!selectedPolygon || this.draggedVertexIndex === null) return;
-
-                // Вычисляем дельту перемещения вершины
-                const vertexCoords = this.#getCanvasCoordinates(event);
-                const vdeltaX = vertexCoords.x - this.startX;
-                const vdeltaY = vertexCoords.y - this.startY;
-
-                selectedPolygon.vertices[this.draggedVertexIndex] = {
-                    x: selectedPolygon.vertices[this.draggedVertexIndex].x + vdeltaX,
-                    y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY,
-                };
-                this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
-
-                // Обновляем начальные координаты для следующего шага
-                this.startX = vertexCoords.x;
-                this.startY = vertexCoords.y;
-                break;
-            }
-            default:
-                break;
         }
 
-        this.#canvasRenderUtilsService.redrawCanvas();
-        this.updateFPS();
+        return inside;
     }
 
-    #handleCanvasClick(event: MouseEvent | TouchEvent): void {
-        const { x, y } = this.#getCanvasCoordinates(event);
-        const canvasEditorState: EditorState = this.#canvasStateService.editorState;
-        let polygonClicked = false;
+    private findPointInPolygonVertex(point: Point, vertices: Point[], radius: number): number | null {
+        for (let i = 0; i < vertices.length; i++) {
+            const dx = vertices[i].x - point.x;
+            const dy = vertices[i].y - point.y;
 
-        this.#polygonsStoreService.selectAllPolygons.forEach((polygon: CanvasPolygon) => {
-            if (canvasEditorState.stateValue) {
-                const isClickInPolygon = isPointInPolygon({ x, y }, polygon.vertices);
-                if (isClickInPolygon) {
-                    polygonClicked = true;
-                    const prevPolygonId = this.#canvasStateService.editorState.selectedPolygonId;
-                    if (prevPolygonId === polygon.id) {
-                        this.#canvasStateService.updateEditorState({
-                            stateValue: "viewMode",
-                        });
-                        polygon.state = "Normal";
-                        this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
-                        this.#canvasRenderUtilsService.redrawCanvas();
-                        return;
-                    }
-                    if (prevPolygonId) {
-                        const prevPolygon = this.#polygonsStoreService.getPolygonById(prevPolygonId);
-                        if (prevPolygon) {
-                            prevPolygon.state = "Normal";
-                            this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
-                        }
-                    }
-                    this.#canvasStateService.updateEditorState({
-                        stateValue: "selectMode",
-                    });
-                    this.#canvasStateService.editorState.selectedPolygonId = polygon.id;
-                    polygon.state = "Selected";
-                    this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
-                    this.#canvasRenderUtilsService.redrawCanvas();
-                    this.updateFPS();
-                }
+            if (dx * dx + dy * dy <= radius * radius) {
+                return i;
             }
-        });
-
-        if (!polygonClicked) {
-            // Если ни один полигон не был кликнут, снимаем выделение
-            const prevPolygonId = this.#canvasStateService.editorState.selectedPolygonId;
-            if (prevPolygonId) {
-                const prevPolygon = this.#polygonsStoreService.getPolygonById(prevPolygonId);
-                if (prevPolygon) {
-                    prevPolygon.state = "Normal";
-                    this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
-                }
-            }
-            this.#canvasStateService.updateEditorState({
-                stateValue: "viewMode",
-            });
-            this.#canvasRenderUtilsService.redrawCanvas();
-            this.updateFPS();
         }
+
+        return null;
     }
 }

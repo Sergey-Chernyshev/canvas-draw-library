@@ -1,8 +1,10 @@
 import { inject, Injectable } from "@angular/core";
+
 import { CanvasService } from "../canvas.service";
-import type { CanvasPolygon } from "./models/element.interface";
-import { PolygonsStoreService } from "./polygons-store.service";
+import { Point } from "../canvas-editor";
 import { generateUniqueId } from "../utils/functions-utils.utils";
+import { CanvasPolygon, CanvasPolygonTypes } from "./models/element.interface";
+import { PolygonsStoreService } from "./polygons-store.service";
 
 @Injectable({
     providedIn: "root",
@@ -40,14 +42,19 @@ export class PolygonsService {
      */
     drawTestPolygon(vertices: Array<{ x: number; y: number }>): void {
         const ctx = this.#canvasService.ctx;
+
         if (!ctx) {
             throw new Error("Canvas context is not available");
         }
+
         if (vertices.length < 3) {
             console.error("Прямоугольник должен иметь как минимум 3 вершины.");
+
             return;
         }
+
         const closedVertices = [...vertices];
+
         if (vertices[0].x !== vertices[vertices.length - 1].x || vertices[0].y !== vertices[vertices.length - 1].y) {
             closedVertices.push(vertices[0]);
         }
@@ -85,9 +92,14 @@ export class PolygonsService {
         }
 
         const vertices = polygon.vertices;
-        if (vertices.length < 3) return;
 
-        // Определяем стили на основе состояния полигона
+        // Если у полигона нет вершин, рисовать нечего
+        if (polygon.type === CanvasPolygonTypes.Polygon && vertices.length < 2) {
+            console.error("Canvas polygon needs at least 2 vertices");
+
+            return;
+        }
+
         const styles =
             polygon.state === "Selected" ? this.#polygonStylesConfig.selected : this.#polygonStylesConfig.default;
 
@@ -97,21 +109,34 @@ export class PolygonsService {
         for (let i = 1; i < vertices.length; i++) {
             ctx.lineTo(vertices[i].x, vertices[i].y);
         }
-        ctx.closePath();
 
-        // Применение стилей для полигона
+        if (polygon.type !== CanvasPolygonTypes.Line) {
+            ctx.closePath();
+        }
+
         ctx.strokeStyle = styles.strokeStyle;
+
         ctx.lineWidth = styles.lineWidth;
+
+        if (polygon.type === CanvasPolygonTypes.Line) {
+            ctx.lineWidth = 4;
+        }
+
+        if (polygon.type === CanvasPolygonTypes.FillPolygon) {
+            ctx.lineWidth = 0;
+        }
+
         ctx.setLineDash(styles.lineDash);
-        ctx.fillStyle = styles.fillStyle;
-        ctx.lineJoin = styles.lineJoin;
-        ctx.lineCap = styles.lineCap;
 
-        ctx.fill();
-        ctx.stroke();
+        if (polygon.type !== CanvasPolygonTypes.Line) {
+            ctx.fillStyle = styles.fillStyle;
+            ctx.fill();
+        }
 
-        // Рисуем вершины с цветом из конфигурации
-        this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
+        if (polygon.type !== CanvasPolygonTypes.FillPolygon) {
+            ctx.stroke();
+            this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
+        }
     }
 
     /**
@@ -120,8 +145,9 @@ export class PolygonsService {
      * @param color Цвет вершин (по умолчанию 'black').
      * @param radius
      */
-    drawVertices(vertices: Array<{ x: number; y: number }>, color = "black", radius = 5): void {
+    drawVertices(vertices: Point[], color = "black", radius = 5): void {
         const ctx = this.#canvasService.ctx;
+
         if (!ctx) {
             throw new Error("Canvas context is not available");
         }
@@ -138,9 +164,10 @@ export class PolygonsService {
     /**
      * Сохраняет данные полигона для дальнейших преобразований.
      * @param vertices Массив координат вершин полигона.
+     * @param type
      * @returns Объект типа Polygon с сохраненными данными.
      */
-    savePolygonData(vertices: Array<{ x: number; y: number }>): CanvasPolygon {
+    savePolygonData(vertices: Point[], type?: CanvasPolygonTypes): CanvasPolygon {
         const newPolygon: CanvasPolygon = {
             id: generateUniqueId(),
             vertices: vertices.map((vertex) => ({ ...vertex })), // Копирование вершин
@@ -149,10 +176,12 @@ export class PolygonsService {
                 strokeColor: "black",
                 lineWidth: 2,
             },
+            type: type || CanvasPolygonTypes.Polygon,
             state: "Normal",
         };
 
         this.#polygonStoreService.addNewPolygon(newPolygon);
+
         return newPolygon;
     }
 

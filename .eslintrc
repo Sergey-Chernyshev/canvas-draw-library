@@ -1,0 +1,53 @@
+{
+  "extends": [
+    // рекомендуется
+    "@tinkoff/eslint-config/app",
+    "@tinkoff/eslint-config-angular",
+    // необязательно
+    "@tinkoff/eslint-config-angular/promise",
+    "@tinkoff/eslint-config-angular/rxjs",
+    "@tinkoff/eslint-config-angular/imports",
+    "@tinkoff/eslint-config-angular/unicorn",
+    "@tinkoff/eslint-config-angular/html-eslint",
+    "@tinkoff/eslint-config-angular/file-progress",
+    "@tinkoff/eslint-config-angular/line-statements",
+    "@tinkoff/eslint-config-angular/member-ordering",
+    "@tinkoff/eslint-config-angular/decorator-position",
+    "@tinkoff/eslint-config-angular/function-return-type",
+    "plugin:@angular-eslint/recommended"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.ts"],
+      "parserOptions": {
+        "project": ["tsconfig.base.json"], // Укажи корректный путь к tsconfig.json
+        "sourceType": "module",
+
+      },
+      "rules": {
+        "@angular-eslint/directive-selector": [
+          "error",
+          {
+            "type": "attribute",
+            "style": "camelCase"
+          }
+        ],
+        "@angular-eslint/component-selector": [
+          "error",
+          {
+            "type": "element",
+            "style": "kebab-case"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.html"],
+      "rules": {
+        "@angular-eslint/template/no-negated-async": "error",
+        "@angular-eslint/template/accessibility-alt-text": "warn",
+        "@angular-eslint/template/no-any": "warn"
+      }
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 import { inject, Injectable } from "@angular/core";
-import type { CanvasPolygon } from "./models/element.interface";
+import { CanvasStateService } from "@nz/nz-canvas-draw";
 import type { Observable } from "rxjs";
 import { BehaviorSubject } from "rxjs";
-import { CanvasStateService } from "../canvas-editor/canvas-state.service";
+
+import type { CanvasPolygon } from "./models/element.interface";
 
 @Injectable({
     providedIn: "root",
@@ -10,7 +11,7 @@ import { CanvasStateService } from "../canvas-editor/canvas-state.service";
 export class PolygonsStoreService {
     readonly #canvasStateService = inject(CanvasStateService);
     #polygons: CanvasPolygon[] = [];
-    #polygons$: BehaviorSubject<CanvasPolygon[]> = new BehaviorSubject<CanvasPolygon[]>(this.#polygons);
+    readonly #polygons$: BehaviorSubject<CanvasPolygon[]> = new BehaviorSubject<CanvasPolygon[]>(this.#polygons);
 
     get selectAllPolygons(): CanvasPolygon[] {
         return this.#polygons;
@@ -32,17 +33,20 @@ export class PolygonsStoreService {
 
     updatePolygonById(polygonId: string, updatedPolygonData: Partial<CanvasPolygon>): void {
         const index = this.#polygons.findIndex((polygon) => polygon.id === polygonId);
+
         if (index !== -1) {
             // Обновляем свойства найденного полигона
             this.#polygons[index] = {
                 ...this.#polygons[index],
                 ...updatedPolygonData,
             };
+
             if (updatedPolygonData.state === "Selected") {
                 this.#canvasStateService.updateEditorState({
                     selectedPolygon: this.#polygons[index],
                 });
             }
+
             this.#polygons$.next(this.#polygons);
         } else {
             console.warn(`Polygon with id ${polygonId} not found`);
@@ -55,6 +59,7 @@ export class PolygonsStoreService {
 
     removePolygonById(polygonId: string): void {
         const index = this.#polygons.findIndex((polygon) => polygon.id === polygonId);
+
         if (index !== -1) {
             this.#polygons.splice(index, 1);
             this.#polygons$.next(this.#polygons);

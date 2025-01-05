@@ -1,11 +1,24 @@
-export interface CanvasPolygon {
+import { FromEnum } from "../../../helpers/general";
+
+export type CanvasPolygon = {
     id: string;
     vertices: CanvasDotCoordinate[];
     style: CanvasPolygonStyle;
     state: "Normal" | "Selected" | "Highlighted";
     transform?: CanvasPolygonTransform;
+    type: CanvasPolygonTypes;
     metadata?: any;
-}
+};
+
+export const CanvasPolygonTypes = {
+    Polygon: "polygon",
+    Line: "line",
+    Point: "point",
+    Circle: "circle",
+    FillPolygon: "fillPolygon",
+} as const;
+
+export type CanvasPolygonTypes = FromEnum<typeof CanvasPolygonTypes>;
 
 export interface CanvasDotCoordinate {
     x: number;

@@ -1,10 +1,15 @@
-import { Injectable } from "@angular/core";
+import { inject, Injectable } from "@angular/core";
+import { KeyShortcutsService } from "@nz/key-shortcuts";
 import type { Observable } from "rxjs";
 import { BehaviorSubject } from "rxjs";
-import type { EditorState, TransformState } from "./models/canvas-editor.interface";
+
+import { PolygonsStoreService } from "../element/polygons-store.service";
+import type { EditorState, TransformState } from "./models";
 
 @Injectable({ providedIn: "root" })
 export class CanvasStateService {
+    readonly #keyShortcutService = inject(KeyShortcutsService);
+
     readonly #transformState$ = new BehaviorSubject<TransformState>({
         scale: 1,
         offsetX: 0,
@@ -12,9 +17,10 @@ export class CanvasStateService {
     });
 
     readonly #editorState$ = new BehaviorSubject<EditorState>({
-        stateValue: "viewMode",
+        editorMode: "drawPolygon",
         selectedPolygonId: null,
         selectedPolygon: null,
+        draftPolygon: null,
     });
 
     get transformState(): TransformState {
@@ -36,6 +42,7 @@ export class CanvasStateService {
     // Функция для обновления состояния трансформации
     updateTransformState(newState: Partial<TransformState>): void {
         const currentState = this.#transformState$.value;
+
         this.#transformState$.next({
             ...currentState,
             ...newState,
@@ -45,10 +52,13 @@ export class CanvasStateService {
     // Функция для обновления состояния редактора
     updateEditorState(newState: Partial<EditorState>): void {
         const currentState = this.#editorState$.value;
-        if (newState.stateValue === "viewMode") {
+
+        if (newState.editorMode === "viewMode") {
             newState.selectedPolygonId = null;
             newState.selectedPolygon = null;
+            newState.draftPolygon = null;
         }
+
         this.#editorState$.next({
             ...currentState,
             ...newState,

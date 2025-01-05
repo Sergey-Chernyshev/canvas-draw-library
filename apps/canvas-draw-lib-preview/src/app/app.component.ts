@@ -1,5 +1,6 @@
 import { Component } from "@angular/core";
 import { RouterModule } from "@angular/router";
+
 import { CanvasComponent } from "./canvas-draw-lib/canvas.component";
 
 @Component({
