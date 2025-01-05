@@ -53,7 +53,7 @@ export class CanvasRenderUtilsService {
         requestAnimationFrame(() => this.redrawCanvasWithAnimationFrame());
     }
 
-    private redrawCanvasWithAnimationFrame() {
+    private redrawCanvasWithAnimationFrame(): void {
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
 
