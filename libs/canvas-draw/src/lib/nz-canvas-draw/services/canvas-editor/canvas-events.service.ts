@@ -236,6 +236,7 @@ export class CanvasEventsService implements OnDestroy {
     private handleDragging(coords: PointerMoveData): void {
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
 
+        // перемещение камеры canvas
         if (this.dragState === DragState.Canvas) {
             this.#canvasStateService.transformState.offsetX += coords.deltaX;
             this.#canvasStateService.transformState.offsetY += coords.deltaY;

@@ -15,6 +15,7 @@ export class CanvasRenderUtilsService {
     readonly #polygonsStoreService = inject(PolygonsStoreService);
     readonly #polygonsService = inject(PolygonsService);
     readonly #canvasStateService = inject(CanvasStateService);
+    private isRedrawRequested = false;
 
     constructor() {
         this.#polygonsStoreService.selectAllPolygons$.pipe(takeUntilDestroyed()).subscribe(() => {
@@ -49,10 +50,18 @@ export class CanvasRenderUtilsService {
      * Метод для перерисовки канваса.
      */
     redrawCanvas(): void {
+        if (this.isRedrawRequested) {
+            return;
+        }
+
+        this.isRedrawRequested = true;
+
         requestAnimationFrame(() => this.redrawCanvasWithAnimationFrame());
     }
 
     private redrawCanvasWithAnimationFrame(): void {
+        this.isRedrawRequested = false; // Сброс флага
+
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
 
@@ -60,19 +69,20 @@ export class CanvasRenderUtilsService {
             throw new Error("Canvas context or canvasRef is not available");
         }
 
-        const offsetX = this.#canvasStateService.transformState.offsetX;
-        const offsetY = this.#canvasStateService.transformState.offsetY;
-        const scale = this.#canvasStateService.transformState.scale;
+        const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
 
         ctx.save();
         ctx.clearRect(0, 0, canvasRef.nativeElement.width, canvasRef.nativeElement.height);
 
         ctx.translate(offsetX, offsetY);
         ctx.scale(scale, scale);
-        // Рисуем все полигоны
+
+        ctx.beginPath();
         this.#polygonsStoreService.selectAllPolygons.forEach((polygon: CanvasPolygon) => {
             this.#polygonsService.drawPolygon(polygon);
         });
+        ctx.closePath();
+
         ctx.restore();
     }
 }

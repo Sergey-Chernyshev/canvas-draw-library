@@ -6,30 +6,116 @@ import { generateUniqueId } from "../utils/functions-utils.utils";
 import { CanvasPolygon, CanvasPolygonTypes } from "./models/element.interface";
 import { PolygonsStoreService } from "./polygons-store.service";
 
+interface PolygonStyle {
+    strokeStyle: string;
+    lineWidth: number;
+    lineDash: number[];
+    fillStyle: string;
+    vertexColor: string;
+    vertexRadius: number;
+    lineJoin: CanvasLineJoin;
+    lineCap: CanvasLineCap;
+    font?: string; // Для текста
+}
+
 @Injectable({
     providedIn: "root",
 })
 export class PolygonsService {
-    readonly #polygonStylesConfig = {
-        default: {
-            strokeStyle: "black",
-            lineWidth: 1,
-            lineDash: [],
-            fillStyle: "rgba(0, 0, 0, 0.2)", // Цвет заливки по умолчанию
-            vertexColor: "black",
-            vertexRadius: 5,
-            lineJoin: "miter" as CanvasLineJoin, // Указываем тип CanvasLineJoin
-            lineCap: "butt" as CanvasLineCap, // Указываем тип CanvasLineCap
-        },
-        selected: {
-            strokeStyle: "#D92929",
+    // readonly #polygonStylesConfig = {
+    //     default: {
+    //         strokeStyle: "black",
+    //         lineWidth: 1,
+    //         lineDash: [],
+    //         fillStyle: "rgba(0, 0, 0, 0.2)", // Цвет заливки по умолчанию
+    //         vertexColor: "black",
+    //         vertexRadius: 5,
+    //         lineJoin: "miter" as CanvasLineJoin, // Указываем тип CanvasLineJoin
+    //         lineCap: "butt" as CanvasLineCap, // Указываем тип CanvasLineCap
+    //     },
+    //     selected: {
+    //         strokeStyle: "#D92929",
+    //         lineWidth: 2,
+    //         lineDash: [5, 5],
+    //         fillStyle: "#F7D4D4",
+    //         vertexColor: "#D92929",
+    //         vertexRadius: 6,
+    //         lineJoin: "round" as CanvasLineJoin,
+    //         lineCap: "round" as CanvasLineCap,
+    //     },
+    // };
+
+    readonly #baseStyle = {
+        strokeStyle: "#34495e",
+        lineWidth: 2,
+        lineDash: [],
+        fillStyle: "rgba(52, 152, 219, 0.1)",
+        vertexColor: "#34495e",
+        vertexRadius: 6,
+        lineJoin: "round" as CanvasLineJoin,
+        lineCap: "round" as CanvasLineCap,
+    };
+
+    readonly #polygonStylesConfig: Record<string, PolygonStyle> = {
+        line: {
+            ...this.#baseStyle,
+            strokeStyle: "#2980b9",
             lineWidth: 2,
-            lineDash: [5, 5],
-            fillStyle: "#F7D4D4",
-            vertexColor: "#D92929",
             vertexRadius: 6,
-            lineJoin: "round" as CanvasLineJoin,
-            lineCap: "round" as CanvasLineCap,
+        },
+        lineSelected: {
+            ...this.#baseStyle,
+            strokeStyle: "#e74c3c",
+            lineWidth: 3,
+            lineDash: [8, 4],
+            vertexColor: "#e74c3c",
+            vertexRadius: 7,
+            lineJoin: "round",
+            lineCap: "round",
+        },
+        polygon: {
+            ...this.#baseStyle,
+            fillStyle: "rgba(46, 204, 113, 0.2)",
+            strokeStyle: "#27ae60",
+            lineWidth: 2,
+        },
+        polygonSelected: {
+            ...this.#baseStyle,
+            fillStyle: "rgba(231, 76, 60, 0.2)",
+            strokeStyle: "#c0392b",
+            lineWidth: 3,
+            lineDash: [8, 4],
+            vertexColor: "#c0392b",
+            vertexRadius: 7,
+            lineJoin: "round",
+            lineCap: "round",
+        },
+        fillPolygon: {
+            ...this.#baseStyle,
+            fillStyle: "rgba(52, 152, 219, 0.2)",
+            strokeStyle: "#2980b9",
+            lineWidth: 2,
+        },
+        fillPolygonSelected: {
+            ...this.#baseStyle,
+            fillStyle: "rgba(231, 76, 60, 0.2)",
+            strokeStyle: "#c0392b",
+            lineWidth: 3,
+            lineDash: [8, 4],
+            vertexColor: "#c0392b",
+            vertexRadius: 7,
+            lineJoin: "round",
+            lineCap: "round",
+        },
+        text: {
+            ...this.#baseStyle,
+            fillStyle: "#2c3e50",
+            font: "16px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+        },
+        textSelected: {
+            ...this.#baseStyle,
+            fillStyle: "#f39c12",
+            font: "16px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
         },
     };
 
@@ -79,6 +165,14 @@ export class PolygonsService {
         this.savePolygonData(vertices);
     }
 
+    private getPolygonStyle(polygon: CanvasPolygon): PolygonStyle {
+        const type = polygon.type.toLowerCase(); // Предполагается, что типы соответствуют ключам в стиле
+        const stateSuffix = polygon.state === "Selected" ? "Selected" : "";
+        const key = `${type}${stateSuffix}`;
+
+        return this.#polygonStylesConfig[key] || this.#baseStyle;
+    }
+
     /**
      * Рисует тестовый прямоугольник на канвасе.
      * @param polygon
@@ -93,50 +187,56 @@ export class PolygonsService {
 
         const vertices = polygon.vertices;
 
-        // Если у полигона нет вершин, рисовать нечего
-        if (polygon.type === CanvasPolygonTypes.Polygon && vertices.length < 2) {
-            console.error("Canvas polygon needs at least 2 vertices");
+        // Проверка на минимальное количество вершин для типов Polygon и FillPolygon
+        if (
+            (polygon.type === CanvasPolygonTypes.Polygon || polygon.type === CanvasPolygonTypes.FillPolygon) &&
+            vertices.length < 2
+        ) {
+            console.error(`Canvas polygon of type ${polygon.type} needs at least 2 vertices`);
 
             return;
         }
 
-        const styles =
-            polygon.state === "Selected" ? this.#polygonStylesConfig.selected : this.#polygonStylesConfig.default;
+        // Получение стиля для текущего полигона
+        const styles = this.getPolygonStyle(polygon);
+
+        ctx.save(); // Сохранение текущего состояния контекста
+
+        // Установка стилей контекста
+        ctx.strokeStyle = styles.strokeStyle;
+        ctx.lineWidth = styles.lineWidth;
+        ctx.setLineDash(styles.lineDash);
+        ctx.fillStyle = styles.fillStyle;
+        ctx.lineJoin = styles.lineJoin;
+        ctx.lineCap = styles.lineCap;
 
         ctx.beginPath();
-        ctx.moveTo(vertices[0].x, vertices[0].y);
 
-        for (let i = 1; i < vertices.length; i++) {
-            ctx.lineTo(vertices[i].x, vertices[i].y);
+        if (vertices.length > 0) {
+            ctx.moveTo(vertices[0].x, vertices[0].y);
+
+            for (let i = 1; i < vertices.length; i++) {
+                ctx.lineTo(vertices[i].x, vertices[i].y);
+            }
+
+            // Закрытие пути для типов, отличных от Line
+            if (polygon.type !== CanvasPolygonTypes.Line) {
+                ctx.closePath();
+            }
         }
 
+        // Выполнение заливки для типов, отличных от Line
         if (polygon.type !== CanvasPolygonTypes.Line) {
-            ctx.closePath();
-        }
-
-        ctx.strokeStyle = styles.strokeStyle;
-
-        ctx.lineWidth = styles.lineWidth;
-
-        if (polygon.type === CanvasPolygonTypes.Line) {
-            ctx.lineWidth = 4;
-        }
-
-        if (polygon.type === CanvasPolygonTypes.FillPolygon) {
-            ctx.lineWidth = 0;
-        }
-
-        ctx.setLineDash(styles.lineDash);
-
-        if (polygon.type !== CanvasPolygonTypes.Line) {
-            ctx.fillStyle = styles.fillStyle;
             ctx.fill();
         }
 
+        // Выполнение обводки и отрисовка вершин для типов, отличных от FillPolygon
         if (polygon.type !== CanvasPolygonTypes.FillPolygon) {
             ctx.stroke();
             this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
         }
+
+        ctx.restore(); // Восстановление предыдущего состояния контекста
     }
 
     /**
@@ -145,19 +245,19 @@ export class PolygonsService {
      * @param color Цвет вершин (по умолчанию 'black').
      * @param radius
      */
-    drawVertices(vertices: Point[], color = "black", radius = 5): void {
+    private drawVertices(vertices: Point[], color: string, radius: number = 5): void {
         const ctx = this.#canvasService.ctx;
 
         if (!ctx) {
-            throw new Error("Canvas context is not available");
+            return;
         }
 
-        vertices.forEach((point) => {
+        ctx.fillStyle = color;
+
+        vertices.forEach((vertex) => {
             ctx.beginPath();
-            ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-            ctx.fillStyle = color;
+            ctx.arc(vertex.x, vertex.y, radius, 0, Math.PI * 2);
             ctx.fill();
-            ctx.closePath();
         });
     }
 

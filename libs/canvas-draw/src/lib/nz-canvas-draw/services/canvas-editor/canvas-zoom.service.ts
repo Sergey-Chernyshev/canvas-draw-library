@@ -1,36 +1,35 @@
-import type { OnDestroy } from "@angular/core";
-import { inject, Injectable } from "@angular/core";
+import { DestroyRef, inject, Injectable } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { fromEvent } from "rxjs";
+
 import { CanvasService } from "../canvas.service";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";
-import { fromEvent, Subject } from "rxjs";
-import { takeUntil } from "rxjs/operators";
 
 @Injectable({
     providedIn: "root",
 })
-export class CanvasZoomService implements OnDestroy {
+export class CanvasZoomService {
     readonly #canvasService = inject(CanvasService);
     readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
     readonly #canvasStateService = inject(CanvasStateService);
+    private readonly destroyRef = inject(DestroyRef);
 
     private readonly minScale = 0.1;
     private readonly maxScale = 10;
     private readonly scaleFactor = 1.03;
 
-    private readonly destroy$ = new Subject<void>();
-
     initializeZoom(): void {
         const canvasRef = this.#canvasService.canvasRef;
+
         if (!canvasRef) {
             throw new Error("Canvas context is not available");
         }
 
         const canvas = canvasRef.nativeElement;
 
-        // Создаем Observable для события wheel
         fromEvent<WheelEvent>(canvas, "wheel")
-            .pipe(takeUntil(this.destroy$))
+            .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((event) => {
                 const { offsetX, offsetY, scale } = this.#canvasStateService.transformState;
 
@@ -41,6 +40,7 @@ export class CanvasZoomService implements OnDestroy {
                 const zoomFactor = event.deltaY < 0 ? this.scaleFactor : 1 / this.scaleFactor;
 
                 let newScale = scale * zoomFactor;
+
                 newScale = Math.max(this.minScale, Math.min(this.maxScale, newScale));
 
                 const newOffsetX = mouseX - (mouseX - offsetX) * (newScale / scale);
@@ -96,10 +96,5 @@ export class CanvasZoomService implements OnDestroy {
         //             console.log('Панорамирование завершено');
         //         }
         //     });
-    }
-
-    ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
     }
 }
