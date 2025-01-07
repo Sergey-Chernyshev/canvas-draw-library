@@ -1,4 +1,4 @@
-import type { CanvasDotCoordinate } from "../element/models/element.interface";
+import type { CanvasDotCoordinate, CanvasPolygon } from "../element/models/element.interface";
 
 /**
  * Проверяет, находится ли точка внутри окружности.
@@ -29,6 +29,61 @@ export function findPointInPolygonVertex(
     }
 
     return null;
+}
+
+export function isPointOnSegment(
+    p: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+    r: number,
+): boolean {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const apx = p.x - a.x;
+    const apy = p.y - a.y;
+    const abLen2 = abx * abx + aby * aby;
+
+    if (!abLen2) {
+        return apx * apx + apy * apy <= r * r;
+    }
+
+    let t = (apx * abx + apy * aby) / abLen2;
+
+    if (t < 0) {
+        t = 0;
+    }
+
+    if (t > 1) {
+        t = 1;
+    }
+
+    const projx = a.x + t * abx;
+    const projy = a.y + t * aby;
+    const dx = p.x - projx;
+    const dy = p.y - projy;
+
+    return dx * dx + dy * dy <= r * r;
+}
+
+export function isCursorOnAnyBoundary(
+    cursor: { x: number; y: number },
+    polygons: CanvasPolygon[],
+    radius: number,
+): boolean {
+    for (const polygon of polygons) {
+        const verts = polygon.vertices;
+
+        for (let i = 0; i < verts.length; i++) {
+            const start = verts[i];
+            const end = verts[(i + 1) % verts.length];
+
+            if (isPointOnSegment(cursor, start, end, radius)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**

@@ -1,13 +1,12 @@
-import { DestroyRef, inject, Injectable, OnDestroy } from "@angular/core";
+import { DestroyRef, inject, Injectable, Renderer2, RendererFactory2 } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { KeyShortcutsService } from "@nz/key-shortcuts";
-import { fromEvent, map, Subject, switchMap, takeUntil, tap } from "rxjs";
+import { CursorService } from "@nz/nz-common";
+import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 
 import { CanvasService } from "../canvas.service";
-import { CanvasPolygonTypes } from "../element/models/element.interface";
-import { PolygonsService } from "../element/polygons.service";
-import { PolygonsStoreService } from "../element/polygons-store.service";
-import { findPointInPolygonVertex } from "../utils/coordinates-utils.utils";
+import { CanvasPolygon, CanvasPolygonTypes, PolygonsService, PolygonsStoreService } from "../element";
+import { findPointInPolygonVertex, isCursorOnAnyBoundary } from "../utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";
 import { DrawModeService } from "./draw-mode/draw-mode.service";
@@ -21,7 +20,20 @@ enum DragState {
 }
 
 @Injectable({ providedIn: "root" })
-export class CanvasEventsService implements OnDestroy {
+export class CanvasEventsService {
+    readonly #canvasService = inject(CanvasService);
+    readonly #canvasStateService = inject(CanvasStateService);
+    readonly #polygonsStoreService = inject(PolygonsStoreService);
+    readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
+    readonly #destroyRef = inject(DestroyRef);
+    readonly #keyShortcutsService = inject(KeyShortcutsService);
+    readonly #polygonService = inject(PolygonsService);
+    readonly #drawModeService = inject(DrawModeService);
+    private readonly rendererFactory = inject(RendererFactory2);
+    readonly #cursorService = inject(CursorService);
+    private readonly renderer: Renderer2;
+
+    private fps = 0;
     private dragState = DragState.None;
     private startX = 0;
     private startY = 0;
@@ -32,19 +44,11 @@ export class CanvasEventsService implements OnDestroy {
     private readonly dragThreshold = 1;
     private lastFrameTime = performance.now();
     private frames = 0;
-    private fps = 0;
-    readonly destroy$ = new Subject<void>();
-    readonly #canvasService = inject(CanvasService);
-    readonly #canvasStateService = inject(CanvasStateService);
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
-    readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
-    readonly #destroyRef = inject(DestroyRef);
-    readonly #keyShortcutsService = inject(KeyShortcutsService);
-    readonly #polygonService = inject(PolygonsService);
-    readonly #drawModeService = inject(DrawModeService);
     #isCursorOnLastVertex = false;
 
     constructor() {
+        this.renderer = this.rendererFactory.createRenderer(null, null);
+
         this.#keyShortcutsService.registerShortcut(
             ["Escape"],
             () => {
@@ -92,11 +96,6 @@ export class CanvasEventsService implements OnDestroy {
             },
             true,
         );
-    }
-
-    ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
     }
 
     initListeners(): void {
@@ -275,10 +274,19 @@ export class CanvasEventsService implements OnDestroy {
     }
 
     private onPointerMoveNoDownKey(event: PointerEvent): void {
-        const mode = this.#canvasStateService.editorState.editorMode;
+        const mode: EditorMode = this.#canvasStateService.editorState.editorMode;
+        const cursorVertex = this.getCanvasCoordinates(event);
+        const allPolygons: CanvasPolygon[] = this.#polygonsStoreService.selectAllPolygons;
+
+        const isOnElementBorder = isCursorOnAnyBoundary(cursorVertex, allPolygons, 5);
+
+        if (isOnElementBorder) {
+            this.#cursorService.setCursor("move");
+        } else {
+            this.#cursorService.resetCursor();
+        }
 
         if (mode === "drawPolygon") {
-            const cursorVertex = this.getCanvasCoordinates(event);
             const draftPolygon = this.#canvasStateService.editorState.draftPolygon;
 
             if (draftPolygon && draftPolygon.vertices.length > 0) {
