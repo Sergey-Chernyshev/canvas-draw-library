@@ -56,7 +56,7 @@ export class CanvasControlService {
             {
                 label: "Дублировать тест 10к",
                 action: () => {
-                    for (let i = 0; i < 10000; i++) {
+                    for (let i = 0; i < 10001; i++) {
                         this.#copyPolygonOnCanvas();
                     }
                 },
