@@ -25,7 +25,6 @@ export class CanvasRenderUtilsService {
     }
 
     resizeCanvas(): void {
-        console.log("resize");
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
 
@@ -65,8 +64,8 @@ export class CanvasRenderUtilsService {
         const offsetY = this.#canvasStateService.transformState.offsetY;
         const scale = this.#canvasStateService.transformState.scale;
 
-        ctx.clearRect(0, 0, canvasRef.nativeElement.width, canvasRef.nativeElement.height);
         ctx.save();
+        ctx.clearRect(0, 0, canvasRef.nativeElement.width, canvasRef.nativeElement.height);
 
         ctx.translate(offsetX, offsetY);
         ctx.scale(scale, scale);

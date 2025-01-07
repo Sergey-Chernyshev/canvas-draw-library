@@ -47,7 +47,14 @@ export class CanvasControlService {
                 label: "Очистить холст",
                 action: () => this.#clearCanvas(),
             },
-            { label: "Дублировать", action: () => this.#copyPolygonOnCanvas() },
+            {
+                label: "Дублировать",
+                action: () => {
+                    for (let i = 0; i < 1000; i++) {
+                        this.#copyPolygonOnCanvas();
+                    }
+                },
+            },
             {
                 label: "Удалить",
                 action: () => this.#deletePolygonOnCanvas(),
