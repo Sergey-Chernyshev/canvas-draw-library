@@ -4,13 +4,20 @@ export type CanvasPolygon = {
     id: string;
     vertices: CanvasDotCoordinate[];
     style: CanvasPolygonStyle;
-    state: "Normal" | "Selected" | "Highlighted";
+    state: "Normal" | "Selected" | "Highlighted" | "OutlineEditorUnselected";
     transform?: CanvasPolygonTransform;
     type: CanvasPolygonTypes;
     metadata?: any;
 };
 
+export const CanvasPolygonEditorUnEditTypes = {
+    OutlinePolygon: "outlinePolygon",
+} as const;
+
+export type CanvasPolygonEditorUnEditTypes = FromEnum<typeof CanvasPolygonEditorUnEditTypes>;
+
 export const CanvasPolygonTypes = {
+    ...CanvasPolygonEditorUnEditTypes,
     Polygon: "polygon",
     Line: "line",
     Point: "point",

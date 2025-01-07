@@ -1,4 +1,5 @@
-import type { CanvasDotCoordinate, CanvasPolygon } from "../element/models/element.interface";
+import type { CanvasDotCoordinate, CanvasPolygon } from "../element";
+import { isEditorUnEditType } from "./types-guard.utils";
 
 /**
  * Проверяет, находится ли точка внутри окружности.
@@ -71,6 +72,10 @@ export function isCursorOnAnyBoundary(
     radius: number,
 ): boolean {
     for (const polygon of polygons) {
+        if (isEditorUnEditType(polygon.type)) {
+            continue;
+        }
+
         const verts = polygon.vertices;
 
         for (let i = 0; i < verts.length; i++) {
@@ -110,4 +115,129 @@ export function isPointInPolygon(point: CanvasDotCoordinate, vertices: CanvasDot
     }
 
     return inside;
+}
+
+type Point = {
+    x: number;
+    y: number;
+};
+
+// Функция для построения выпуклой оболочки (Алгоритм Монтоны Чейн)
+export function convexHull(points: Point[]): Point[] {
+    if (points.length <= 1) {
+        return points.slice();
+    }
+
+    const sorted = points.slice().sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+
+    const lower: Point[] = [];
+
+    for (const p of sorted) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+            lower.pop();
+        }
+
+        lower.push(p);
+    }
+
+    const upper: Point[] = [];
+
+    for (let i = sorted.length - 1; i >= 0; i--) {
+        const p = sorted[i];
+
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+            upper.pop();
+        }
+
+        upper.push(p);
+    }
+
+    lower.pop();
+    upper.pop();
+
+    return lower.concat(upper);
+}
+
+export function cross(o: Point, a: Point, b: Point): number {
+    return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+}
+
+export function minimumBoundingRectangle(points: Point[], offset: number = 0): Point[] {
+    if (points.length === 0) {
+        throw new Error("Массив точек пуст.");
+    }
+
+    if (points.length === 1) {
+        return [
+            { x: points[0].x - offset, y: points[0].y - offset },
+            { x: points[0].x + offset, y: points[0].y - offset },
+            { x: points[0].x + offset, y: points[0].y + offset },
+            { x: points[0].x - offset, y: points[0].y + offset },
+        ];
+    }
+
+    const hull = convexHull(points);
+    const n = hull.length;
+
+    if (n === 1) {
+        const p = hull[0];
+
+        return [
+            { x: p.x - offset, y: p.y - offset },
+            { x: p.x + offset, y: p.y - offset },
+            { x: p.x + offset, y: p.y + offset },
+            { x: p.x - offset, y: p.y + offset },
+        ];
+    }
+
+    if (n === 2) {
+        const p1 = hull[0];
+        const p2 = hull[1];
+        const minX = Math.min(p1.x, p2.x) - offset;
+        const maxX = Math.max(p1.x, p2.x) + offset;
+        const minY = Math.min(p1.y, p2.y) - offset;
+        const maxY = Math.max(p1.y, p2.y) + offset;
+
+        return [
+            { x: minX, y: minY },
+            { x: maxX, y: minY },
+            { x: maxX, y: maxY },
+            { x: minX, y: maxY },
+        ];
+    }
+
+    let minX = hull[0].x;
+    let maxX = hull[0].x;
+    let minY = hull[0].y;
+    let maxY = hull[0].y;
+
+    for (const p of hull) {
+        if (p.x < minX) {
+            minX = p.x;
+        }
+
+        if (p.x > maxX) {
+            maxX = p.x;
+        }
+
+        if (p.y < minY) {
+            minY = p.y;
+        }
+
+        if (p.y > maxY) {
+            maxY = p.y;
+        }
+    }
+
+    minX -= offset;
+    maxX += offset;
+    minY -= offset;
+    maxY += offset;
+
+    return [
+        { x: minX, y: minY },
+        { x: maxX, y: minY },
+        { x: maxX, y: maxY },
+        { x: minX, y: maxY },
+    ];
 }

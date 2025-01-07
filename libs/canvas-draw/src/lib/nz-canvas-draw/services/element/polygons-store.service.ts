@@ -3,7 +3,7 @@ import { CanvasStateService } from "@nz/nz-canvas-draw";
 import type { Observable } from "rxjs";
 import { BehaviorSubject } from "rxjs";
 
-import type { CanvasPolygon } from "./models/element.interface";
+import type { CanvasPolygon } from "./models";
 
 @Injectable({
     providedIn: "root",

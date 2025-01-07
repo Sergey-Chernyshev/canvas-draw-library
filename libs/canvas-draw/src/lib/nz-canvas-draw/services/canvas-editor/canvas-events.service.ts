@@ -5,8 +5,14 @@ import { CursorService } from "@nz/nz-common";
 import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 
 import { CanvasService } from "../canvas.service";
-import { CanvasPolygon, CanvasPolygonTypes, PolygonsService, PolygonsStoreService } from "../element";
-import { findPointInPolygonVertex, isCursorOnAnyBoundary } from "../utils";
+import {
+    CanvasPolygon,
+    CanvasPolygonEditorUnEditTypes,
+    CanvasPolygonTypes,
+    PolygonsService,
+    PolygonsStoreService,
+} from "../element";
+import { findPointInPolygonVertex, isCursorOnAnyBoundary, isEditorUnEditType } from "../utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";
 import { DrawModeService } from "./draw-mode/draw-mode.service";
@@ -57,8 +63,9 @@ export class CanvasEventsService {
                 if (draftPolygon) {
                     console.log(draftPolygon);
                     this.#polygonsStoreService.removePolygonById(draftPolygon.id);
-                    this.#drawModeService.finalizePreviewLine();
                 }
+
+                this.#drawModeService.finalizeAllTempElements();
 
                 this.#deselectElement();
             },
@@ -150,8 +157,7 @@ export class CanvasEventsService {
 
         this.#deselectElement();
         this.#isCursorOnLastVertex = false;
-        this.#drawModeService.finalizePreviewLine();
-        this.#drawModeService.removeTemporaryPolygon();
+        this.#drawModeService.finalizeAllTempElements();
     }
 
     private onPointerDown(event: PointerEvent): void {
@@ -251,6 +257,7 @@ export class CanvasEventsService {
                 y: v.y + deltaY,
             }));
             this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
             this.startX = x;
             this.startY = y;
         }
@@ -267,6 +274,7 @@ export class CanvasEventsService {
             this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
             this.startX = vertexCoords.x;
             this.startY = vertexCoords.y;
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
         }
 
         this.#canvasRenderUtilsService.redrawCanvas();
@@ -300,7 +308,7 @@ export class CanvasEventsService {
                     this.#drawModeService.addTemporaryPolygon(draftPolygon);
                     this.#isCursorOnLastVertex = true;
                 } else {
-                    this.#drawModeService.removeTemporaryPolygon();
+                    this.#drawModeService.finalizeAllTempElements();
                     this.#isCursorOnLastVertex = false;
                 }
             }
@@ -327,7 +335,7 @@ export class CanvasEventsService {
 
                 this.#canvasStateService.editorState.selectedPolygonId = newPolygon.id;
                 this.#canvasStateService.editorState.draftPolygon = newPolygon;
-                console.log(this.#canvasStateService.editorState.draftPolygon);
+                console.log("отрисовка полигона");
                 this.#canvasRenderUtilsService.redrawCanvas();
 
                 return;
@@ -349,7 +357,7 @@ export class CanvasEventsService {
         let polygonClicked = false;
 
         this.#polygonsStoreService.selectAllPolygons.forEach((polygon) => {
-            if (!mode) {
+            if (!mode || isEditorUnEditType(polygon.type)) {
                 return;
             }
 
@@ -364,6 +372,7 @@ export class CanvasEventsService {
                     polygon.state = "Normal";
                     this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
                     this.#canvasRenderUtilsService.redrawCanvas();
+                    this.#drawModeService.finalizeAllTempElements();
 
                     return;
                 }
@@ -382,11 +391,14 @@ export class CanvasEventsService {
                 polygon.state = "Selected";
                 this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
                 this.#canvasRenderUtilsService.redrawCanvas();
+
+                this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(polygon, 15);
                 this.updateFPS();
             }
         });
 
         if (!polygonClicked) {
+            this.#drawModeService.finalizeAllTempElements();
             this.#deselectElement();
         }
     }
