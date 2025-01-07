@@ -15,7 +15,7 @@ interface PolygonStyle {
     vertexRadius: number;
     lineJoin: CanvasLineJoin;
     lineCap: CanvasLineCap;
-    font?: string; // Для текста
+    font?: string;
 }
 
 @Injectable({
@@ -121,7 +121,6 @@ export class PolygonsService {
             closedVertices.push(vertices[0]);
         }
 
-        // Начинаем путь для рисования полигона
         ctx.beginPath();
         ctx.moveTo(closedVertices[0].x, closedVertices[0].y);
 
@@ -130,11 +129,11 @@ export class PolygonsService {
         }
 
         ctx.closePath();
-        ctx.fillStyle = "rgba(0, 128, 255, 0.5)"; // Полупрозрачная заливка
+        ctx.fillStyle = "rgba(0, 128, 255, 0.5)";
         ctx.fill();
 
-        ctx.strokeStyle = "black"; // Цвет обводки
-        ctx.lineWidth = 2; // Толщина линии
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
         ctx.stroke();
 
         this.drawVertices(closedVertices, "black");
@@ -155,7 +154,6 @@ export class PolygonsService {
 
         const vertices = polygon.vertices;
 
-        // Проверка на минимальное количество вершин для типов Polygon и FillPolygon
         if (
             (polygon.type === CanvasPolygonTypes.Polygon || polygon.type === CanvasPolygonTypes.FillPolygon) &&
             vertices.length < 2
@@ -165,14 +163,10 @@ export class PolygonsService {
             return;
         }
 
-        // Получение стиля для текущего полигона
         const styles = this.getPolygonStyle(polygon);
 
-        console.log(styles, polygon);
+        ctx.save();
 
-        ctx.save(); // Сохранение текущего состояния контекста
-
-        // Установка стилей контекста
         ctx.strokeStyle = styles.strokeStyle;
         ctx.lineWidth = styles.lineWidth;
         ctx.setLineDash(styles.lineDash);
@@ -189,24 +183,21 @@ export class PolygonsService {
                 ctx.lineTo(vertices[i].x, vertices[i].y);
             }
 
-            // Закрытие пути для типов, отличных от Line
             if (polygon.type !== CanvasPolygonTypes.Line) {
                 ctx.closePath();
             }
         }
 
-        // Выполнение заливки для типов, отличных от Line
         if (polygon.type !== CanvasPolygonTypes.Line) {
             ctx.fill();
         }
 
-        // Выполнение обводки и отрисовка вершин для типов, отличных от FillPolygon
         if (polygon.type !== CanvasPolygonTypes.FillPolygon) {
             ctx.stroke();
             this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
         }
 
-        ctx.restore(); // Восстановление предыдущего состояния контекста
+        ctx.restore();
     }
 
     /**
@@ -218,7 +209,7 @@ export class PolygonsService {
     savePolygonData(vertices: Point[], type?: CanvasPolygonTypes): CanvasPolygon {
         const newPolygon: CanvasPolygon = {
             id: generateUniqueId(),
-            vertices: vertices.map((vertex) => ({ ...vertex })), // Копирование вершин
+            vertices: vertices.map((vertex) => ({ ...vertex })),
             style: {
                 fillColor: "rgba(0, 128, 255, 0.5)",
                 strokeColor: "black",
@@ -234,7 +225,7 @@ export class PolygonsService {
     }
 
     private getPolygonStyle(polygon: CanvasPolygon): PolygonStyle {
-        const type = polygon.type; // Предполагается, что типы соответствуют ключам в стиле
+        const type = polygon.type;
         const stateSuffix = polygon.state === "Selected" ? "Selected" : "";
         const key = `${type}${stateSuffix}`;
 

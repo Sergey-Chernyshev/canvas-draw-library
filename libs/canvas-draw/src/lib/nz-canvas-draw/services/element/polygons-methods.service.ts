@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@angular/core";
 
-import { isPointInPolygon } from "../utils/coordinates-utils.utils";
-import type { CanvasDotCoordinate, CanvasPolygon } from "./models/element.interface";
+import { isPointInPolygon } from "../utils";
+import type { CanvasDotCoordinate, CanvasPolygon } from "./models";
 import { PolygonsStoreService } from "./polygons-store.service";
 
 @Injectable({
@@ -14,7 +14,9 @@ export class PolygonsMethodsService {
         const allPolygons: CanvasPolygon[] = this.#polygonsStoreService.selectAllPolygons;
 
         if (getAlone) {
-            const polygon = allPolygons.find((polygon) => isPointInPolygon(coordinates, polygon.vertices));
+            const polygon = allPolygons.find((polygonEl: CanvasPolygon) =>
+                isPointInPolygon(coordinates, polygonEl.vertices),
+            );
 
             return polygon ? [polygon] : [];
         }

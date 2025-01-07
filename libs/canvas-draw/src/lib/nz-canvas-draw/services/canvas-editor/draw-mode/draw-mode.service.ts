@@ -57,7 +57,6 @@ export class DrawModeService {
      */
     finalizePreviewLine(): void {
         if (this.previewLineId) {
-            // Удаляем только предварительную линию
             this.#polygonsStore.removePolygonById(this.previewLineId);
             this.#drawUtilsElements.splice(this.#drawUtilsElements.indexOf(this.previewLineId), 1);
             this.previewLineId = undefined;

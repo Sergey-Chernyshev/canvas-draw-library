@@ -5,13 +5,7 @@ import { CursorService } from "@nz/nz-common";
 import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 
 import { CanvasService } from "../canvas.service";
-import {
-    CanvasPolygon,
-    CanvasPolygonEditorUnEditTypes,
-    CanvasPolygonTypes,
-    PolygonsService,
-    PolygonsStoreService,
-} from "../element";
+import { CanvasPolygon, CanvasPolygonTypes, PolygonsService, PolygonsStoreService } from "../element";
 import { findPointInPolygonVertex, isCursorOnAnyBoundary, isEditorUnEditType } from "../utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";

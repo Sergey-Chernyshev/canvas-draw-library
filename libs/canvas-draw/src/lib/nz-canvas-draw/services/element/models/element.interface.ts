@@ -36,7 +36,6 @@ export interface CanvasPolygonStyle {
     fillColor: string;
     strokeColor: string;
     lineWidth: number;
-    // Дополнительные свойства по необходимости
 }
 
 interface CanvasPolygonTransform {
