@@ -63,7 +63,6 @@ export class PolygonsStoreService {
         if (index !== -1) {
             this.#polygons.splice(index, 1);
             this.#polygons$.next(this.#polygons);
-            console.log(`Polygon with id ${polygonId} has been removed`);
         } else {
             console.warn(`Polygon with id ${polygonId} not found`);
         }
