@@ -1,17 +1,26 @@
 import { FromEnum } from "../../../helpers/general";
 
-export type CanvasElement = {
+export type CanvasElement = (Partial<CircleElement> | Required<CircleElement>) & {
     id: string;
     vertices: Point[];
     style: CanvasElementStyle;
-    state: "Normal" | "Selected" | "Highlighted" | "OutlineEditorUnselected";
+    state: "Normal" | "Selected" | "Highlighted" | "OutlineEditorUnselected" | "rotateButton";
     transform?: CanvasElementTransform;
     type: CanvasElementTypes;
     metadata?: any;
 };
 
+export type CircleElement = {
+    center: Point;
+    radius: number;
+    startAngle: number;
+    endAngle: number;
+    counterclockwise: boolean;
+};
+
 export const CanvasElementEditorUnEditTypes = {
     OutlineElement: "outlineElement",
+    RotateButton: "rotateButton",
 } as const;
 
 export type CanvasElementEditorUnEditTypes = FromEnum<typeof CanvasElementEditorUnEditTypes>;

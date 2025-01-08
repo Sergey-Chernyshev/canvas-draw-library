@@ -7,27 +7,25 @@ import { minimumBoundingRectangle } from "../../utils";
 @Injectable({ providedIn: "root" })
 export class DrawModeService {
     previewLineId?: string;
-    readonly #drawUtilsElements: string[] = [];
+    readonly #tempElements: string[] = [];
     readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
     readonly #polygonService = inject(ElementService);
     readonly #polygonsStore = inject(ElementStoreService);
-    private temporaryOutlinePolygonId: string | null = null;
+    private temporaryOutlinePolygon: CanvasElement | null = null;
     #temporaryPolygon: CanvasElement | null = null;
+    private rotateButtonId: string | null = null;
 
-    /**
-     * Создает или обновляет предварительную линию на канвасе.
-     * @param startCoord Начальная точка линии.
-     * @param endCoord Конечная точка линии.
-     * @returns Обновленный или созданный полигон линии.
-     */
+    getTemporaryOutlinePolygon(): CanvasElement | null {
+        return this.temporaryOutlinePolygon;
+    }
+
     createOrUpdatePreviewLine(startCoord: Point, endCoord: Point): CanvasElement {
         if (!this.previewLineId) {
             const polygon = this.#polygonService.savePolygonData([startCoord, endCoord]);
 
             polygon.state = "Selected";
-            this.#drawUtilsElements.push(polygon.id);
+            this.#tempElements.push(polygon.id);
             this.previewLineId = polygon.id;
-            this.#canvasRenderUtilsService.redrawCanvas();
 
             return polygon;
         }
@@ -38,115 +36,143 @@ export class DrawModeService {
             const newPolygon = this.#polygonService.savePolygonData([startCoord, endCoord]);
 
             newPolygon.state = "Selected";
-            this.#drawUtilsElements.push(newPolygon.id);
+            this.#tempElements.push(newPolygon.id);
             this.previewLineId = newPolygon.id;
-            this.#canvasRenderUtilsService.redrawCanvas();
 
             return newPolygon;
         }
 
         polygon.vertices = [startCoord, endCoord];
         this.#polygonsStore.updateElementById(polygon.id, polygon);
-        this.#canvasRenderUtilsService.redrawCanvas();
 
         return polygon;
     }
 
-    /**
-     * Завершает предварительную линию, удаляя её с канваса.
-     */
     finalizePreviewLine(): void {
         if (this.previewLineId) {
             this.#polygonsStore.removePolygonById(this.previewLineId);
-            this.#drawUtilsElements.splice(this.#drawUtilsElements.indexOf(this.previewLineId), 1);
+            this.#tempElements.splice(this.#tempElements.indexOf(this.previewLineId), 1);
             this.previewLineId = undefined;
-            this.#canvasRenderUtilsService.redrawCanvas();
         }
     }
 
-    /**
-     * Удаляет временный ограничивающий прямоугольник.
-     */
     finalizeTemporaryOutlinePolygonOnEdit(): void {
-        if (this.temporaryOutlinePolygonId) {
-            // Удаляем только временный ограничивающий прямоугольник
-            this.#polygonsStore.removePolygonById(this.temporaryOutlinePolygonId);
-            this.#drawUtilsElements.splice(this.#drawUtilsElements.indexOf(this.temporaryOutlinePolygonId), 1);
-            this.temporaryOutlinePolygonId = null;
-            this.#canvasRenderUtilsService.redrawCanvas();
+        if (this.temporaryOutlinePolygon) {
+            this.#polygonsStore.removePolygonById(this.temporaryOutlinePolygon.id);
+            this.#tempElements.splice(this.#tempElements.indexOf(this.temporaryOutlinePolygon.id), 1);
+            this.temporaryOutlinePolygon = null;
+        }
+
+        if (this.rotateButtonId) {
+            this.#polygonsStore.removePolygonById(this.rotateButtonId);
+            this.#tempElements.splice(this.#tempElements.indexOf(this.rotateButtonId), 1);
+            this.rotateButtonId = null;
         }
     }
 
-    /**
-     * Создаёт временный полигон.
-     * @param polygon Полигон, который необходимо временно добавить.
-     */
     addTemporaryPolygon(polygon: CanvasElement): void {
         if (!this.#temporaryPolygon) {
             this.#temporaryPolygon = this.#polygonService.savePolygonData(
                 polygon.vertices,
                 CanvasElementTypes.FillPolygon,
             );
-            this.#drawUtilsElements.push(this.#temporaryPolygon.id);
-            this.#canvasRenderUtilsService.redrawCanvas();
+            this.#tempElements.push(this.#temporaryPolygon.id);
         }
     }
 
-    /**
-     * Удаляет временный полигон.
-     */
     removeTemporaryFillPolygon(): void {
         if (this.#temporaryPolygon) {
             this.#polygonsStore.removePolygonById(this.#temporaryPolygon.id);
-            this.#drawUtilsElements.splice(this.#drawUtilsElements.indexOf(this.#temporaryPolygon.id), 1);
+            this.#tempElements.splice(this.#tempElements.indexOf(this.#temporaryPolygon.id), 1);
             this.#temporaryPolygon = null;
-            this.#canvasRenderUtilsService.redrawCanvas();
         }
     }
 
-    /**
-     * Создаёт или обновляет временный ограничивающий прямоугольник для переданного полигона.
-     * @param targetPolygon Полигон, для которого нужно создать или обновить ограничивающий прямоугольник.
-     * @param offset Смещение для расширения ограничивающего прямоугольника.
-     * @returns Временный ограничивающий прямоугольник.
-     */
     addOrUpdateTemporaryOutlinePolygonOnEdit(targetPolygon: CanvasElement, offset: number = 0): CanvasElement {
         const mbrVertices = minimumBoundingRectangle(targetPolygon.vertices, offset);
 
-        if (!this.temporaryOutlinePolygonId) {
+        if (!this.temporaryOutlinePolygon) {
             const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasElementTypes.OutlineElement);
 
             tempPolygon.state = "OutlineEditorUnselected";
-            this.#drawUtilsElements.push(tempPolygon.id);
-            this.temporaryOutlinePolygonId = tempPolygon.id;
-            this.#canvasRenderUtilsService.redrawCanvas();
+            this.#tempElements.push(tempPolygon.id);
+            this.temporaryOutlinePolygon = tempPolygon;
+            this.addOrUpdateRotateButton(tempPolygon);
 
             return tempPolygon;
         }
 
-        const existingTempPolygon = this.#polygonsStore.getPolygonById(this.temporaryOutlinePolygonId);
+        const existingTempPolygon = this.#polygonsStore.getPolygonById(this.temporaryOutlinePolygon.id);
 
         if (!existingTempPolygon) {
             const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasElementTypes.OutlineElement);
 
             tempPolygon.state = "OutlineEditorUnselected";
-            this.#drawUtilsElements.push(tempPolygon.id);
-            this.temporaryOutlinePolygonId = tempPolygon.id;
-            this.#canvasRenderUtilsService.redrawCanvas();
+            this.#tempElements.push(tempPolygon.id);
+            this.temporaryOutlinePolygon = tempPolygon;
+            this.addOrUpdateRotateButton(tempPolygon);
 
             return tempPolygon;
         }
 
         existingTempPolygon.vertices = mbrVertices;
+        this.addOrUpdateRotateButton(existingTempPolygon);
         this.#polygonsStore.updateElementById(existingTempPolygon.id, existingTempPolygon);
-        this.#canvasRenderUtilsService.redrawCanvas();
 
         return existingTempPolygon;
     }
 
-    /**
-     * Завершает все временные элементы, удаляя их с canvas.
-     */
+    private addOrUpdateRotateButton(outlinePolygon: CanvasElement): void {
+        const topVertices = outlinePolygon.vertices.sort((a, b) => a.y - b.y).slice(0, 2);
+        const cx = (topVertices[0].x + topVertices[1].x) / 2;
+        const cy = Math.min(topVertices[0].y, topVertices[1].y) - 20;
+        const radius = 5;
+
+        if (!this.rotateButtonId) {
+            const circlePolygon = this.#polygonService.savePolygonData(
+                [{ x: cx, y: cy }],
+                CanvasElementTypes.RotateButton,
+            );
+
+            circlePolygon.center = { x: cx, y: cy };
+            circlePolygon.radius = radius;
+            circlePolygon.startAngle = 0;
+            circlePolygon.endAngle = 2 * Math.PI;
+            circlePolygon.counterclockwise = false;
+            circlePolygon.state = "rotateButton";
+
+            this.#tempElements.push(circlePolygon.id);
+            this.rotateButtonId = circlePolygon.id;
+        }
+
+        const existingCircle = this.#polygonsStore.getPolygonById(this.rotateButtonId);
+
+        if (!existingCircle) {
+            const circlePolygon = this.#polygonService.savePolygonData(
+                [{ x: cx, y: cy }],
+                CanvasElementTypes.RotateButton,
+            );
+
+            circlePolygon.center = { x: cx, y: cy };
+            circlePolygon.radius = radius;
+            circlePolygon.startAngle = 0;
+            circlePolygon.endAngle = 2 * Math.PI;
+            circlePolygon.counterclockwise = false;
+            circlePolygon.state = "rotateButton";
+
+            this.#tempElements.push(circlePolygon.id);
+            this.rotateButtonId = circlePolygon.id;
+            // this.#canvasRenderUtilsService.redrawCanvas();
+
+            return;
+        }
+
+        existingCircle.center = { x: cx, y: cy };
+        existingCircle.vertices = [{ x: cx, y: cy }];
+
+        this.#polygonsStore.updateElementById(existingCircle.id, existingCircle);
+    }
+
     finalizeAllTempElements(): void {
         this.finalizeTemporaryOutlinePolygonOnEdit();
         this.finalizePreviewLine();

@@ -33,7 +33,10 @@ export function findPointInPolygonVertex(point: Point, vertices: Point[], radius
 export function isPointOnSegment(
     p: { x: number; y: number },
     a: { x: number; y: number },
-    b: { x: number; y: number },
+    b: {
+        x: number;
+        y: number;
+    },
     r: number,
 ): boolean {
     const abx = b.x - a.x;
@@ -97,26 +100,62 @@ export function isCursorOnAnyBoundary(
     return false;
 }
 
+export type IsPointOnAnyElementByTypesFuncType = {
+    isOnElement: boolean;
+    element: CanvasElement | null;
+    isOnBorder: boolean;
+    isInsideElement: boolean;
+    verticalsNumber: number | null;
+};
+
 export function isPointOnAnyElementByTypes(
     point: Point,
     elements: CanvasElement[],
     radius: number = 15,
-): CanvasElement | null {
+): IsPointOnAnyElementByTypesFuncType {
     for (const element of elements) {
+        const isPointInOneOfVertices = findPointInPolygonVertex(point, element.vertices, radius);
+        const isPointOnBorder = isCursorOnAnyBoundary(point, [element], radius);
+        const isPointInsideElement = isPointInPolygon(point, element.vertices);
+
         switch (element.type) {
             case "polygon": {
-                const isPointOnBorder = isCursorOnAnyBoundary(point, [element], radius);
-                const isPointInsideElement = isPointInPolygon(point, element.vertices);
-
                 if (isPointOnBorder || isPointInsideElement) {
-                    return element;
+                    return {
+                        isOnElement: true,
+                        element,
+                        isOnBorder: isPointOnBorder,
+                        isInsideElement: isPointInsideElement,
+                        verticalsNumber: isPointInOneOfVertices,
+                    };
                 }
 
                 break;
             }
             case "line": {
-                if (isCursorOnAnyBoundary(point, [element], radius, true)) {
-                    return element;
+                const isPointOnBorder = isCursorOnAnyBoundary(point, [element], radius);
+
+                if (isPointOnBorder) {
+                    return {
+                        isOnElement: true,
+                        element,
+                        isOnBorder: isPointOnBorder,
+                        isInsideElement: false,
+                        verticalsNumber: isPointInOneOfVertices,
+                    };
+                }
+
+                break;
+            }
+            case "rotateButton": {
+                if (isPointInOneOfVertices !== null) {
+                    return {
+                        isOnElement: true,
+                        element,
+                        isOnBorder: true,
+                        isInsideElement: true,
+                        verticalsNumber: null,
+                    };
                 }
 
                 break;
@@ -127,7 +166,13 @@ export function isPointOnAnyElementByTypes(
         }
     }
 
-    return null;
+    return {
+        isOnElement: false,
+        element: null,
+        isOnBorder: false,
+        isInsideElement: false,
+        verticalsNumber: null,
+    };
 }
 
 /**
@@ -204,7 +249,10 @@ export function minimumBoundingRectangle(points: Point[], offset: number = 0): P
     if (points.length === 1) {
         return [
             { x: points[0].x - offset, y: points[0].y - offset },
-            { x: points[0].x + offset, y: points[0].y - offset },
+            {
+                x: points[0].x + offset,
+                y: points[0].y - offset,
+            },
             { x: points[0].x + offset, y: points[0].y + offset },
             { x: points[0].x - offset, y: points[0].y + offset },
         ];
@@ -219,7 +267,10 @@ export function minimumBoundingRectangle(points: Point[], offset: number = 0): P
         return [
             { x: p.x - offset, y: p.y - offset },
             { x: p.x + offset, y: p.y - offset },
-            { x: p.x + offset, y: p.y + offset },
+            {
+                x: p.x + offset,
+                y: p.y + offset,
+            },
             { x: p.x - offset, y: p.y + offset },
         ];
     }
@@ -274,4 +325,108 @@ export function minimumBoundingRectangle(points: Point[], offset: number = 0): P
         { x: maxX, y: maxY },
         { x: minX, y: maxY },
     ];
+}
+
+const SENSITIVITY = 10;
+let previousAngle: number | null = null;
+
+export function calculateRotationAngle(currentX: number, currentY: number, centerX: number, centerY: number): number {
+    const deltaX = currentX - centerX;
+    const deltaY = currentY - centerY;
+    const angleRadians = Math.atan2(deltaY, deltaX);
+    const angleDegrees = angleRadians * (180 / Math.PI);
+
+    if (previousAngle === null) {
+        previousAngle = angleDegrees;
+
+        return 0;
+    }
+
+    let angleChange = angleDegrees - previousAngle;
+
+    previousAngle = angleDegrees;
+
+    angleChange *= SENSITIVITY;
+
+    return angleChange;
+}
+
+/**
+ * Вычисляет конвексную оболочку для набора точек с использованием алгоритма Andrew's Monotone Chain.
+ *
+ * @param points - Массив точек, для которых вычисляется конвексная оболочка.
+ * @returns Массив точек, представляющих конвексную оболочку в порядке обхода.
+ */
+export function computeConvexHull(points: Point[]): Point[] {
+    if (points.length <= 1) {
+        return points.slice();
+    }
+
+    // Сортируем точки сначала по X, затем по Y
+    const sortedPoints = points.slice().sort((a, b) => {
+        return a.x === b.x ? a.y - b.y : a.x - b.x;
+    });
+
+    const lower: Point[] = [];
+
+    for (const p of sortedPoints) {
+        while (lower.length >= 2 && crossVectors(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) {
+            lower.pop();
+        }
+
+        lower.push(p);
+    }
+
+    const upper: Point[] = [];
+
+    for (let i = sortedPoints.length - 1; i >= 0; i--) {
+        const p = sortedPoints[i];
+
+        while (upper.length >= 2 && crossVectors(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) {
+            upper.pop();
+        }
+
+        upper.push(p);
+    }
+
+    // Удаляем последний элемент каждого списка (они дублируются)
+    lower.pop();
+    upper.pop();
+
+    // Объединяем нижнюю и верхнюю оболочки
+    return lower.concat(upper);
+}
+
+/**
+ * Вычисляет произведение векторов AB и AC.
+ *
+ * @param A - Первая точка.
+ * @param B - Вторая точка.
+ * @param C - Третья точка.
+ * @returns Произведение векторов AB и AC.
+ */
+export function crossVectors(A: Point, B: Point, C: Point): number {
+    const ABx = B.x - A.x;
+    const ABy = B.y - A.y;
+    const ACx = C.x - A.x;
+    const ACy = C.y - A.y;
+
+    return ABx * ACy - ABy * ACx;
+}
+
+/**
+ * Вычисляет центр прямоугольника.
+ *
+ * @param vertices - Массив из четырёх точек, представляющих вершины прямоугольника.
+ * @returns Точка, представляющая центр прямоугольника.
+ */
+export function findRectangleCenter(vertices: Point[]): Point {
+    if (vertices.length !== 4) {
+        throw new Error("Для вычисления центра необходимо передать ровно 4 вершины.");
+    }
+
+    const centerX = (vertices[0].x + vertices[1].x + vertices[2].x + vertices[3].x) / 4;
+    const centerY = (vertices[0].y + vertices[1].y + vertices[2].y + vertices[3].y) / 4;
+
+    return { x: centerX, y: centerY };
 }

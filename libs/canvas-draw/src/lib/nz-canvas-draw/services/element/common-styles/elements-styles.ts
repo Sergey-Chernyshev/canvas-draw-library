@@ -61,6 +61,17 @@ export const ELEMENTS_STYLE_CONFIG: Record<string, CanvasElementStyle> = {
         lineJoin: "miter" as CanvasLineJoin,
         lineCap: "butt" as CanvasLineCap,
     },
+    rotateButton: {
+        ...BASE_STYLE,
+        fillStyle: "rgba(0, 0, 0, 0)",
+        strokeStyle: "#002b75",
+        lineWidth: 1,
+        lineDash: [3, 3],
+        vertexColor: "#001337",
+        vertexRadius: 5,
+        lineJoin: "round" as CanvasLineJoin,
+        lineCap: "round" as CanvasLineCap,
+    },
     text: {
         ...BASE_STYLE,
         fillStyle: "#2c3e50",

@@ -7,10 +7,13 @@ import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 import { CanvasService } from "../canvas.service";
 import { CanvasElement, CanvasElementTypes, ElementService, ElementStoreService } from "../element";
 import {
+    calculateRotationAngle,
     findPointInPolygonVertex,
-    isCursorOnAnyBoundary,
+    findRectangleCenter,
     isEditorUnEditType,
     isPointOnAnyElementByTypes,
+    IsPointOnAnyElementByTypesFuncType,
+    rotateVertices,
 } from "../utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";
@@ -22,6 +25,7 @@ enum DragState {
     Canvas = "canvas",
     Polygon = "polygon",
     Vertex = "vertex",
+    Rotate = "rotate",
 }
 
 @Injectable({ providedIn: "root" })
@@ -49,6 +53,7 @@ export class CanvasEventsService {
     private readonly dragThreshold = 1;
     private lastFrameTime = performance.now();
     private frames = 0;
+    private rotationBaseAngle = 0;
     #isCursorOnLastVertex = false;
 
     constructor() {
@@ -193,19 +198,22 @@ export class CanvasEventsService {
         this.dragState = DragState.None;
         this.draggedVertexIndex = null;
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+        const allPolygons: CanvasElement[] = this.#polygonsStoreService.selectAllPolygons;
         const canvasCoordinates = { x: startCanvasX, y: startCanvasY };
-        let isOnSelectedPolygon = false;
-        let isOnSelectedPolygonVertex: number | null = null;
+        let isOnSelectedPolygon: IsPointOnAnyElementByTypesFuncType | null = null;
+
+        const isOnSomePolygon = isPointOnAnyElementByTypes(canvasCoordinates, allPolygons);
 
         if (selectedPolygon) {
-            isOnSelectedPolygon = this.isPointInPolygon(canvasCoordinates, selectedPolygon.vertices);
-            isOnSelectedPolygonVertex = this.findPointInPolygonVertex(canvasCoordinates, selectedPolygon.vertices, 10);
+            isOnSelectedPolygon = isPointOnAnyElementByTypes(canvasCoordinates, [selectedPolygon]);
         }
 
-        if (isOnSelectedPolygonVertex !== null) {
+        if (isOnSomePolygon.element && isOnSomePolygon.element.type === CanvasElementTypes.RotateButton) {
+            this.dragState = DragState.Rotate;
+        } else if (isOnSelectedPolygon && isOnSelectedPolygon?.verticalsNumber !== null) {
             this.dragState = DragState.Vertex;
-            this.draggedVertexIndex = isOnSelectedPolygonVertex;
-        } else if (isOnSelectedPolygon) {
+            this.draggedVertexIndex = isOnSelectedPolygon.verticalsNumber;
+        } else if (isOnSelectedPolygon?.element) {
             this.dragState = DragState.Polygon;
         } else {
             this.dragState = DragState.Canvas;
@@ -253,7 +261,31 @@ export class CanvasEventsService {
     }
 
     private handleDragging(coords: PointerMoveData): void {
-        const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+        const selectedElement = this.#canvasStateService.editorState.selectedPolygon;
+        const outlineElement = this.#drawModeService.getTemporaryOutlinePolygon();
+
+        if (this.dragState === DragState.Rotate && selectedElement && outlineElement) {
+            // TODO: Сохранять угол поворота и потом задавать его для полигона обводки
+            const outlineCenter = findRectangleCenter(outlineElement.vertices);
+
+            this.rotationBaseAngle += calculateRotationAngle(coords.x, coords.y, outlineCenter.x, outlineCenter.y);
+
+            const newRotatedCoord = rotateVertices(selectedElement.vertices, this.rotationBaseAngle);
+            // const newRotatedCoordOutlineElement = rotateVertices(outlineElement.vertices, this.rotationBaseAngle);
+
+            this.#polygonsStoreService.updateElementById(selectedElement.id, {
+                vertices: newRotatedCoord,
+            });
+
+            // this.#polygonsStoreService.updateElementById(outlineElement.id, {
+            //     vertices: newRotatedCoordOutlineElement,
+            // });
+            selectedElement.vertices = newRotatedCoord;
+
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedElement, 15);
+        }
+
+        this.rotationBaseAngle = 0;
 
         // перемещение камеры canvas
         if (this.dragState === DragState.Canvas) {
@@ -261,34 +293,34 @@ export class CanvasEventsService {
             this.#canvasStateService.transformState.offsetY += coords.deltaY;
         }
 
-        if (this.dragState === DragState.Polygon && selectedPolygon) {
+        if (this.dragState === DragState.Polygon && selectedElement) {
             const { x, y } = { x: this.startX + coords.x, y: this.startY + coords.y };
             const deltaX = x - this.startX;
             const deltaY = y - this.startY;
 
-            selectedPolygon.vertices = selectedPolygon.vertices.map((v) => ({
+            selectedElement.vertices = selectedElement.vertices.map((v) => ({
                 x: v.x + deltaX,
                 y: v.y + deltaY,
             }));
-            this.#polygonsStoreService.updateElementById(selectedPolygon.id, selectedPolygon);
-            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
+            this.#polygonsStoreService.updateElementById(selectedElement.id, selectedElement);
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedElement, 15);
             this.startX = x;
             this.startY = y;
         }
 
-        if (this.dragState === DragState.Vertex && selectedPolygon && this.draggedVertexIndex !== null) {
+        if (this.dragState === DragState.Vertex && selectedElement && this.draggedVertexIndex !== null) {
             const vertexCoords = { x: this.startX + coords.x, y: this.startY + coords.y };
             const vdeltaX = vertexCoords.x - this.startX;
             const vdeltaY = vertexCoords.y - this.startY;
 
-            selectedPolygon.vertices[this.draggedVertexIndex] = {
-                x: selectedPolygon.vertices[this.draggedVertexIndex].x + vdeltaX,
-                y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY,
+            selectedElement.vertices[this.draggedVertexIndex] = {
+                x: selectedElement.vertices[this.draggedVertexIndex].x + vdeltaX,
+                y: selectedElement.vertices[this.draggedVertexIndex].y + vdeltaY,
             };
-            this.#polygonsStoreService.updateElementById(selectedPolygon.id, selectedPolygon);
+            this.#polygonsStoreService.updateElementById(selectedElement.id, selectedElement);
             this.startX = vertexCoords.x;
             this.startY = vertexCoords.y;
-            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedElement, 15);
         }
 
         this.#canvasRenderUtilsService.redrawCanvas();
@@ -300,10 +332,14 @@ export class CanvasEventsService {
         const cursorVertex = this.getCanvasCoordinates(event);
         const allPolygons: CanvasElement[] = this.#polygonsStoreService.selectAllPolygons;
 
-        const isOnElement = isPointOnAnyElementByTypes(cursorVertex, allPolygons, 5);
+        const isOnElement = isPointOnAnyElementByTypes(cursorVertex, allPolygons, 6);
 
-        if (isOnElement) {
-            this.#cursorService.setCursor("move");
+        if (isOnElement.isOnElement) {
+            if (isOnElement.element?.type === "rotateButton") {
+                this.#cursorService.setCursor("grab");
+            } else {
+                this.#cursorService.setCursor("move");
+            }
         } else {
             this.#cursorService.resetCursor();
         }
@@ -364,9 +400,10 @@ export class CanvasEventsService {
         let polygonClicked = false;
 
         const allElements = this.#polygonsStoreService.selectAllPolygons;
-        const clickedElement = isPointOnAnyElementByTypes({ x, y }, allElements, 5);
+        const isOnElementStatus = isPointOnAnyElementByTypes({ x, y }, allElements, 5);
+        const clickedElement = isOnElementStatus.element;
 
-        if (clickedElement) {
+        if (clickedElement && !isEditorUnEditType(clickedElement.type)) {
             polygonClicked = true;
             const prevId = this.#canvasStateService.editorState.selectedPolygonId;
 
@@ -454,37 +491,5 @@ export class CanvasEventsService {
             this.lastFrameTime = currentTime;
             console.log(Math.round(this.fps));
         }
-    }
-
-    private isPointInPolygon(point: Point, vertices: Point[]): boolean {
-        let inside = false;
-
-        for (let i = 0; i < vertices.length; i++) {
-            const j = i === vertices.length - 1 ? 0 : i + 1;
-            const xi = vertices[i].x;
-            const yi = vertices[i].y;
-            const xj = vertices[j].x;
-            const yj = vertices[j].y;
-            const intersect = yi > point.y !== yj > point.y && point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
-
-            if (intersect) {
-                inside = !inside;
-            }
-        }
-
-        return inside;
-    }
-
-    private findPointInPolygonVertex(point: Point, vertices: Point[], radius: number): number | null {
-        for (let i = 0; i < vertices.length; i++) {
-            const dx = vertices[i].x - point.x;
-            const dy = vertices[i].y - point.y;
-
-            if (dx * dx + dy * dy <= radius * radius) {
-                return i;
-            }
-        }
-
-        return null;
     }
 }

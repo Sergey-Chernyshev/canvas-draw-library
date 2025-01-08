@@ -2,10 +2,16 @@ import { inject, Injectable } from "@angular/core";
 
 import { CanvasService } from "../canvas.service";
 import { Point } from "../canvas-editor";
-import { generateUniqueId } from "../utils";
+import { generateUniqueId, rotateVertices } from "../utils";
 import { BASE_STYLE, ELEMENTS_STYLE_CONFIG } from "./common-styles";
 import { ElementStoreService } from "./element-store.service";
-import { CanvasElement, CanvasElementStyle, CanvasElementTypes } from "./models";
+import {
+    CanvasElement,
+    CanvasElementEditorUnEditTypes,
+    CanvasElementStyle,
+    CanvasElementTypes,
+    CircleElement,
+} from "./models";
 
 @Injectable({
     providedIn: "root",
@@ -66,6 +72,10 @@ export class ElementService {
 
         if (!ctx || !canvasRef) {
             throw new Error("Canvas context or canvasRef is not available");
+        }
+
+        if (polygon.type === "circle" || polygon.type === "rotateButton") {
+            this.drawCircle(polygon);
         }
 
         const vertices = polygon.vertices;
@@ -139,9 +149,9 @@ export class ElementService {
         return newPolygon;
     }
 
-    private getPolygonStyle(polygon: CanvasElement): CanvasElementStyle {
-        const type = polygon.type;
-        const stateSuffix = polygon.state === "Selected" ? "Selected" : "";
+    private getPolygonStyle(element: CanvasElement): CanvasElementStyle {
+        const type = element.type;
+        const stateSuffix = element.state === "Selected" ? "Selected" : "";
         const key = `${type}${stateSuffix}`;
 
         return ELEMENTS_STYLE_CONFIG[key] || BASE_STYLE;
@@ -167,5 +177,48 @@ export class ElementService {
             ctx.arc(vertex.x, vertex.y, radius, 0, Math.PI * 2);
             ctx.fill();
         });
+    }
+
+    drawCircle(circle: CanvasElement): void {
+        const ctx = this.#canvasService.ctx;
+        const canvasRef = this.#canvasService.canvasRef;
+
+        if (!ctx || !canvasRef) {
+            throw new Error("Canvas context or canvasRef is not available");
+        }
+
+        if (circle.type !== CanvasElementTypes.Circle && circle.type !== CanvasElementEditorUnEditTypes.RotateButton) {
+            console.error(`Canvas element of type ${circle.type} is not a circle`);
+
+            return;
+        }
+
+        const { center, radius, startAngle, endAngle, counterclockwise } = circle as CircleElement;
+
+        const hasVertex = circle.vertices && circle.vertices.length > 0;
+
+        const styles = this.getPolygonStyle(circle);
+
+        ctx.save();
+        //
+        ctx.strokeStyle = styles.strokeStyle;
+        ctx.lineWidth = styles.lineWidth;
+        ctx.setLineDash(styles.lineDash);
+        // ctx.fillStyle = styles.fillStyle;
+        ctx.lineJoin = styles.lineJoin;
+        ctx.lineCap = styles.lineCap;
+
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius, startAngle, endAngle, counterclockwise);
+        ctx.stroke();
+        ctx.closePath();
+
+        if (circle.state === "Selected" && circle.type !== CanvasElementEditorUnEditTypes.RotateButton) {
+            if (hasVertex) {
+                this.drawVertices(circle.vertices, styles.vertexColor, 1);
+            }
+        }
+
+        ctx.restore();
     }
 }
