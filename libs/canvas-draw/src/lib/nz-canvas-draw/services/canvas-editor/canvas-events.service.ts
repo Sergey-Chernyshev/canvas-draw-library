@@ -5,7 +5,7 @@ import { CursorService } from "@nz/nz-common";
 import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 
 import { CanvasService } from "../canvas.service";
-import { CanvasElement, CanvasElementTypes, PolygonsService, PolygonsStoreService } from "../element";
+import { CanvasElement, CanvasElementTypes, ElementService, ElementStoreService } from "../element";
 import {
     findPointInPolygonVertex,
     isCursorOnAnyBoundary,
@@ -28,11 +28,11 @@ enum DragState {
 export class CanvasEventsService {
     readonly #canvasService = inject(CanvasService);
     readonly #canvasStateService = inject(CanvasStateService);
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
+    readonly #polygonsStoreService = inject(ElementStoreService);
     readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
     readonly #destroyRef = inject(DestroyRef);
     readonly #keyShortcutsService = inject(KeyShortcutsService);
-    readonly #polygonService = inject(PolygonsService);
+    readonly #polygonService = inject(ElementService);
     readonly #drawModeService = inject(DrawModeService);
     private readonly rendererFactory = inject(RendererFactory2);
     readonly #cursorService = inject(CursorService);
@@ -156,14 +156,14 @@ export class CanvasEventsService {
         const editorState = this.#canvasStateService.editorState;
 
         if (editorState.editorMode === "drawPolygon" && editorState.draftPolygon) {
-            this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
+            this.#polygonsStoreService.updateElementById(editorState.draftPolygon.id, {
                 type: CanvasElementTypes.Polygon,
             });
             console.log("Рисование полигона окончено");
         }
 
         if (editorState.editorMode === "drawLine" && editorState.draftPolygon) {
-            this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
+            this.#polygonsStoreService.updateElementById(editorState.draftPolygon.id, {
                 type: CanvasElementTypes.Line,
             });
             console.log("Рисование линии окончено");
@@ -270,7 +270,7 @@ export class CanvasEventsService {
                 x: v.x + deltaX,
                 y: v.y + deltaY,
             }));
-            this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
+            this.#polygonsStoreService.updateElementById(selectedPolygon.id, selectedPolygon);
             this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
             this.startX = x;
             this.startY = y;
@@ -285,7 +285,7 @@ export class CanvasEventsService {
                 x: selectedPolygon.vertices[this.draggedVertexIndex].x + vdeltaX,
                 y: selectedPolygon.vertices[this.draggedVertexIndex].y + vdeltaY,
             };
-            this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, selectedPolygon);
+            this.#polygonsStoreService.updateElementById(selectedPolygon.id, selectedPolygon);
             this.startX = vertexCoords.x;
             this.startY = vertexCoords.y;
             this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(selectedPolygon, 15);
@@ -355,7 +355,7 @@ export class CanvasEventsService {
             }
 
             draftPolygon.vertices.push({ x, y });
-            this.#polygonsStoreService.updatePolygonById(draftPolygon.id, draftPolygon);
+            this.#polygonsStoreService.updateElementById(draftPolygon.id, draftPolygon);
             this.#canvasRenderUtilsService.redrawCanvas();
 
             return;
@@ -373,7 +373,7 @@ export class CanvasEventsService {
             if (prevId === clickedElement.id) {
                 this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });
                 clickedElement.state = "Normal";
-                this.#polygonsStoreService.updatePolygonById(clickedElement.id, clickedElement);
+                this.#polygonsStoreService.updateElementById(clickedElement.id, clickedElement);
                 this.#canvasRenderUtilsService.redrawCanvas();
                 this.#drawModeService.finalizeAllTempElements();
 
@@ -385,14 +385,14 @@ export class CanvasEventsService {
 
                 if (prevPolygon) {
                     prevPolygon.state = "Normal";
-                    this.#polygonsStoreService.updatePolygonById(prevId, prevPolygon);
+                    this.#polygonsStoreService.updateElementById(prevId, prevPolygon);
                 }
             }
 
             this.#canvasStateService.updateEditorState({ editorMode: "selectMode" });
             this.#canvasStateService.editorState.selectedPolygonId = clickedElement.id;
             clickedElement.state = "Selected";
-            this.#polygonsStoreService.updatePolygonById(clickedElement.id, clickedElement);
+            this.#polygonsStoreService.updateElementById(clickedElement.id, clickedElement);
             this.#canvasRenderUtilsService.redrawCanvas();
 
             this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(clickedElement, 15);
@@ -413,7 +413,7 @@ export class CanvasEventsService {
 
             if (prevPolygon) {
                 prevPolygon.state = "Normal";
-                this.#polygonsStoreService.updatePolygonById(prevPolygonId, prevPolygon);
+                this.#polygonsStoreService.updateElementById(prevPolygonId, prevPolygon);
             }
 
             this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });

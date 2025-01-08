@@ -3,7 +3,7 @@ import { KeyShortcutsService } from "@nz/key-shortcuts";
 import type { Observable } from "rxjs";
 import { BehaviorSubject } from "rxjs";
 
-import { PolygonsStoreService } from "../element/polygons-store.service";
+import { ElementStoreService } from "../element/element-store.service";
 import type { EditorState, TransformState } from "./models";
 
 @Injectable({ providedIn: "root" })

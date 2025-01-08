@@ -1,7 +1,7 @@
 import { CommonModule } from "@angular/common";
 import type { AfterViewInit, ElementRef } from "@angular/core";
 import { Component, inject, ViewChild } from "@angular/core";
-import { CanvasInitService, CanvasSettings, PolygonsService } from "@nz/nz-canvas-draw";
+import { CanvasInitService, CanvasSettings, ElementService } from "@nz/nz-canvas-draw";
 
 @Component({
     selector: "app-canvas",
@@ -18,7 +18,7 @@ export class CanvasComponent implements AfterViewInit {
     canvasMenu!: ElementRef<HTMLDivElement>;
 
     readonly #canvasInitService = inject(CanvasInitService);
-    readonly #canvasElementsService = inject(PolygonsService);
+    readonly #canvasElementsService = inject(ElementService);
     // readonly #canvasStateService = inject(CanvasStateService);
     //
     // get getCanvasState(): Observable<EditorState> {

@@ -3,88 +3,16 @@ import { inject, Injectable } from "@angular/core";
 import { CanvasService } from "../canvas.service";
 import { Point } from "../canvas-editor";
 import { generateUniqueId } from "../utils";
+import { BASE_STYLE, ELEMENTS_STYLE_CONFIG } from "./common-styles";
+import { ElementStoreService } from "./element-store.service";
 import { CanvasElement, CanvasElementStyle, CanvasElementTypes } from "./models";
-import { PolygonsStoreService } from "./polygons-store.service";
 
 @Injectable({
     providedIn: "root",
 })
-export class PolygonsService {
-    readonly #baseStyle = {
-        strokeStyle: "#34495e",
-        lineWidth: 2,
-        lineDash: [],
-        fillStyle: "rgba(52, 152, 219, 0.1)",
-        vertexColor: "#34495e",
-        vertexRadius: 6,
-        lineJoin: "round" as CanvasLineJoin,
-        lineCap: "round" as CanvasLineCap,
-    };
-
-    readonly #polygonStylesConfig: Record<string, CanvasElementStyle> = {
-        line: {
-            ...this.#baseStyle,
-            strokeStyle: "#2980b9",
-            lineWidth: 2,
-            vertexRadius: 6,
-        },
-        lineSelected: {
-            ...this.#baseStyle,
-            strokeStyle: "#e74c3c",
-            lineWidth: 3,
-            lineDash: [8, 4],
-            vertexColor: "#e74c3c",
-            vertexRadius: 7,
-            lineJoin: "round",
-            lineCap: "round",
-        },
-        polygon: {
-            ...this.#baseStyle,
-            fillStyle: "rgba(46, 204, 113, 0.2)",
-            strokeStyle: "#27ae60",
-            lineWidth: 2,
-        },
-        polygonSelected: {
-            ...this.#baseStyle,
-            fillStyle: "rgba(231, 76, 60, 0.2)",
-            strokeStyle: "#c0392b",
-            lineWidth: 3,
-            lineDash: [8, 4],
-            vertexColor: "#c0392b",
-            vertexRadius: 7,
-            lineJoin: "round",
-            lineCap: "round",
-        },
-        fillPolygon: {
-            ...this.#baseStyle,
-            fillStyle: "rgba(52, 152, 219, 0.2)",
-            strokeStyle: "#2980b9",
-            lineWidth: 2,
-        },
-        outlineElement: {
-            ...this.#baseStyle,
-            fillStyle: "rgba(0, 0, 0, 0)",
-            strokeStyle: "#002b75",
-            lineWidth: 1,
-            vertexColor: "#001337",
-            vertexRadius: 5,
-            lineJoin: "miter" as CanvasLineJoin,
-            lineCap: "butt" as CanvasLineCap,
-        },
-        text: {
-            ...this.#baseStyle,
-            fillStyle: "#2c3e50",
-            font: "16px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        },
-        textSelected: {
-            ...this.#baseStyle,
-            fillStyle: "#f39c12",
-            font: "16px 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        },
-    };
-
+export class ElementService {
     readonly #canvasService = inject(CanvasService);
-    readonly #polygonStoreService = inject(PolygonsStoreService);
+    readonly #polygonStoreService = inject(ElementStoreService);
 
     /**
      * Рисует тестовый прямоугольник на канвасе.
@@ -201,7 +129,7 @@ export class PolygonsService {
         const newPolygon: CanvasElement = {
             id: generateUniqueId(),
             vertices: vertices.map((vertex) => ({ ...vertex })),
-            style: this.#baseStyle,
+            style: BASE_STYLE,
             type: type || CanvasElementTypes.Polygon,
             state: "Normal",
         };
@@ -216,7 +144,7 @@ export class PolygonsService {
         const stateSuffix = polygon.state === "Selected" ? "Selected" : "";
         const key = `${type}${stateSuffix}`;
 
-        return this.#polygonStylesConfig[key] || this.#baseStyle;
+        return ELEMENTS_STYLE_CONFIG[key] || BASE_STYLE;
     }
 
     /**

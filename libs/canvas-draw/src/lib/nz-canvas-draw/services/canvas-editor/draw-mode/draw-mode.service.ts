@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@angular/core";
-import { CanvasRenderUtilsService, Point, PolygonsService } from "@nz/nz-canvas-draw";
+import { CanvasRenderUtilsService, ElementService, Point } from "@nz/nz-canvas-draw";
 
-import { CanvasElement, CanvasElementTypes, PolygonsStoreService } from "../../element";
+import { CanvasElement, CanvasElementTypes, ElementStoreService } from "../../element";
 import { minimumBoundingRectangle } from "../../utils";
 
 @Injectable({ providedIn: "root" })
@@ -9,8 +9,8 @@ export class DrawModeService {
     previewLineId?: string;
     readonly #drawUtilsElements: string[] = [];
     readonly #canvasRenderUtilsService = inject(CanvasRenderUtilsService);
-    readonly #polygonService = inject(PolygonsService);
-    readonly #polygonsStore = inject(PolygonsStoreService);
+    readonly #polygonService = inject(ElementService);
+    readonly #polygonsStore = inject(ElementStoreService);
     private temporaryOutlinePolygonId: string | null = null;
     #temporaryPolygon: CanvasElement | null = null;
 
@@ -46,7 +46,7 @@ export class DrawModeService {
         }
 
         polygon.vertices = [startCoord, endCoord];
-        this.#polygonsStore.updatePolygonById(polygon.id, polygon);
+        this.#polygonsStore.updateElementById(polygon.id, polygon);
         this.#canvasRenderUtilsService.redrawCanvas();
 
         return polygon;
@@ -138,7 +138,7 @@ export class DrawModeService {
         }
 
         existingTempPolygon.vertices = mbrVertices;
-        this.#polygonsStore.updatePolygonById(existingTempPolygon.id, existingTempPolygon);
+        this.#polygonsStore.updateElementById(existingTempPolygon.id, existingTempPolygon);
         this.#canvasRenderUtilsService.redrawCanvas();
 
         return existingTempPolygon;

@@ -3,13 +3,13 @@ import { inject, Injectable, RendererFactory2 } from "@angular/core";
 
 import { CanvasStateService, EditorMode } from "../canvas-editor";
 import { DrawModeService } from "../canvas-editor/draw-mode/draw-mode.service";
-import { PolygonsStoreService } from "../element";
+import { ElementStoreService } from "../element";
 import { generateUniqueId } from "../utils";
 
 @Injectable({ providedIn: "root" })
 export class CanvasControlService {
     readonly #rendererFactory = inject(RendererFactory2);
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
+    readonly #polygonsStoreService = inject(ElementStoreService);
     readonly #canvasStateService = inject(CanvasStateService);
     readonly #drawModeService = inject(DrawModeService);
 
@@ -120,7 +120,7 @@ export class CanvasControlService {
             })),
         };
 
-        this.#polygonsStoreService.updatePolygonById(selectedPolygon.id, {
+        this.#polygonsStoreService.updateElementById(selectedPolygon.id, {
             state: "Normal",
         });
         this.#polygonsStoreService.addNewPolygon(newPolygon);

@@ -2,14 +2,14 @@ import { inject, Injectable } from "@angular/core";
 import { Point } from "@nz/nz-canvas-draw";
 
 import { isPointInPolygon } from "../utils";
+import { ElementStoreService } from "./element-store.service";
 import type { CanvasElement } from "./models";
-import { PolygonsStoreService } from "./polygons-store.service";
 
 @Injectable({
     providedIn: "root",
 })
-export class PolygonsMethodsService {
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
+export class ElementMethodsService {
+    readonly #polygonsStoreService = inject(ElementStoreService);
 
     selectAllPolygonsByCoordinates(coordinates: Point, getAlone = false): CanvasElement[] {
         const allPolygons: CanvasElement[] = this.#polygonsStoreService.selectAllPolygons;

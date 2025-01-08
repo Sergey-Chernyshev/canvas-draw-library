@@ -2,9 +2,9 @@ import { inject, Injectable } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 import { CanvasService } from "../canvas.service";
+import { ElementService } from "../element/element.service";
+import { ElementStoreService } from "../element/element-store.service";
 import type { CanvasElement } from "../element/models/element.module";
-import { PolygonsService } from "../element/polygons.service";
-import { PolygonsStoreService } from "../element/polygons-store.service";
 import { CanvasStateService } from "./canvas-state.service";
 
 @Injectable({
@@ -12,8 +12,8 @@ import { CanvasStateService } from "./canvas-state.service";
 })
 export class CanvasRenderUtilsService {
     readonly #canvasService = inject(CanvasService);
-    readonly #polygonsStoreService = inject(PolygonsStoreService);
-    readonly #polygonsService = inject(PolygonsService);
+    readonly #polygonsStoreService = inject(ElementStoreService);
+    readonly #polygonsService = inject(ElementService);
     readonly #canvasStateService = inject(CanvasStateService);
     private isRedrawRequested = false;
 

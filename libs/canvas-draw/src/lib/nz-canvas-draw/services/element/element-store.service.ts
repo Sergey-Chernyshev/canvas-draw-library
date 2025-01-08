@@ -8,7 +8,7 @@ import type { CanvasElement } from "./models";
 @Injectable({
     providedIn: "root",
 })
-export class PolygonsStoreService {
+export class ElementStoreService {
     readonly #canvasStateService = inject(CanvasStateService);
     #polygons: CanvasElement[] = [];
     readonly #polygons$: BehaviorSubject<CanvasElement[]> = new BehaviorSubject<CanvasElement[]>(this.#polygons);
@@ -31,8 +31,8 @@ export class PolygonsStoreService {
         this.#polygons$.next(this.#polygons);
     }
 
-    updatePolygonById(polygonId: string, updatedPolygonData: Partial<CanvasElement>): void {
-        const index = this.#polygons.findIndex((polygon) => polygon.id === polygonId);
+    updateElementById(elementId: string, updatedPolygonData: Partial<CanvasElement>): void {
+        const index = this.#polygons.findIndex((polygon) => polygon.id === elementId);
 
         if (index !== -1) {
             // Обновляем свойства найденного полигона
@@ -49,7 +49,7 @@ export class PolygonsStoreService {
 
             this.#polygons$.next(this.#polygons);
         } else {
-            console.warn(`Polygon with id ${polygonId} not found`);
+            console.warn(`Polygon with id ${elementId} not found`);
         }
     }
 
