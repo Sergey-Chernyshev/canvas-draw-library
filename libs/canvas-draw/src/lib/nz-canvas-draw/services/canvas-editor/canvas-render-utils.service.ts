@@ -2,7 +2,7 @@ import { inject, Injectable } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 
 import { CanvasService } from "../canvas.service";
-import type { CanvasPolygon } from "../element/models/element.interface";
+import type { CanvasElement } from "../element/models/element.module";
 import { PolygonsService } from "../element/polygons.service";
 import { PolygonsStoreService } from "../element/polygons-store.service";
 import { CanvasStateService } from "./canvas-state.service";
@@ -78,7 +78,7 @@ export class CanvasRenderUtilsService {
         ctx.scale(scale, scale);
 
         ctx.beginPath();
-        this.#polygonsStoreService.selectAllPolygons.forEach((polygon: CanvasPolygon) => {
+        this.#polygonsStoreService.selectAllPolygons.forEach((polygon: CanvasElement) => {
             this.#polygonsService.drawPolygon(polygon);
         });
         ctx.closePath();

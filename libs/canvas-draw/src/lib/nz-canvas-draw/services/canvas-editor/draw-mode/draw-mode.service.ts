@@ -1,7 +1,7 @@
 import { inject, Injectable } from "@angular/core";
 import { CanvasRenderUtilsService, Point, PolygonsService } from "@nz/nz-canvas-draw";
 
-import { CanvasPolygon, CanvasPolygonTypes, PolygonsStoreService } from "../../element";
+import { CanvasElement, CanvasElementTypes, PolygonsStoreService } from "../../element";
 import { minimumBoundingRectangle } from "../../utils";
 
 @Injectable({ providedIn: "root" })
@@ -12,7 +12,7 @@ export class DrawModeService {
     readonly #polygonService = inject(PolygonsService);
     readonly #polygonsStore = inject(PolygonsStoreService);
     private temporaryOutlinePolygonId: string | null = null;
-    #temporaryPolygon: CanvasPolygon | null = null;
+    #temporaryPolygon: CanvasElement | null = null;
 
     /**
      * Создает или обновляет предварительную линию на канвасе.
@@ -20,7 +20,7 @@ export class DrawModeService {
      * @param endCoord Конечная точка линии.
      * @returns Обновленный или созданный полигон линии.
      */
-    createOrUpdatePreviewLine(startCoord: Point, endCoord: Point): CanvasPolygon {
+    createOrUpdatePreviewLine(startCoord: Point, endCoord: Point): CanvasElement {
         if (!this.previewLineId) {
             const polygon = this.#polygonService.savePolygonData([startCoord, endCoord]);
 
@@ -81,11 +81,11 @@ export class DrawModeService {
      * Создаёт временный полигон.
      * @param polygon Полигон, который необходимо временно добавить.
      */
-    addTemporaryPolygon(polygon: CanvasPolygon): void {
+    addTemporaryPolygon(polygon: CanvasElement): void {
         if (!this.#temporaryPolygon) {
             this.#temporaryPolygon = this.#polygonService.savePolygonData(
                 polygon.vertices,
-                CanvasPolygonTypes.FillPolygon,
+                CanvasElementTypes.FillPolygon,
             );
             this.#drawUtilsElements.push(this.#temporaryPolygon.id);
             this.#canvasRenderUtilsService.redrawCanvas();
@@ -110,11 +110,11 @@ export class DrawModeService {
      * @param offset Смещение для расширения ограничивающего прямоугольника.
      * @returns Временный ограничивающий прямоугольник.
      */
-    addOrUpdateTemporaryOutlinePolygonOnEdit(targetPolygon: CanvasPolygon, offset: number = 0): CanvasPolygon {
+    addOrUpdateTemporaryOutlinePolygonOnEdit(targetPolygon: CanvasElement, offset: number = 0): CanvasElement {
         const mbrVertices = minimumBoundingRectangle(targetPolygon.vertices, offset);
 
         if (!this.temporaryOutlinePolygonId) {
-            const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasPolygonTypes.OutlinePolygon);
+            const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasElementTypes.OutlineElement);
 
             tempPolygon.state = "OutlineEditorUnselected";
             this.#drawUtilsElements.push(tempPolygon.id);
@@ -127,7 +127,7 @@ export class DrawModeService {
         const existingTempPolygon = this.#polygonsStore.getPolygonById(this.temporaryOutlinePolygonId);
 
         if (!existingTempPolygon) {
-            const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasPolygonTypes.OutlinePolygon);
+            const tempPolygon = this.#polygonService.savePolygonData(mbrVertices, CanvasElementTypes.OutlineElement);
 
             tempPolygon.state = "OutlineEditorUnselected";
             this.#drawUtilsElements.push(tempPolygon.id);

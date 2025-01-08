@@ -3,25 +3,25 @@ import { CanvasStateService } from "@nz/nz-canvas-draw";
 import type { Observable } from "rxjs";
 import { BehaviorSubject } from "rxjs";
 
-import type { CanvasPolygon } from "./models";
+import type { CanvasElement } from "./models";
 
 @Injectable({
     providedIn: "root",
 })
 export class PolygonsStoreService {
     readonly #canvasStateService = inject(CanvasStateService);
-    #polygons: CanvasPolygon[] = [];
-    readonly #polygons$: BehaviorSubject<CanvasPolygon[]> = new BehaviorSubject<CanvasPolygon[]>(this.#polygons);
+    #polygons: CanvasElement[] = [];
+    readonly #polygons$: BehaviorSubject<CanvasElement[]> = new BehaviorSubject<CanvasElement[]>(this.#polygons);
 
-    get selectAllPolygons(): CanvasPolygon[] {
+    get selectAllPolygons(): CanvasElement[] {
         return this.#polygons;
     }
 
-    get selectAllPolygons$(): Observable<CanvasPolygon[]> {
+    get selectAllPolygons$(): Observable<CanvasElement[]> {
         return this.#polygons$.asObservable();
     }
 
-    addNewPolygon(polygon: CanvasPolygon): void {
+    addNewPolygon(polygon: CanvasElement): void {
         this.#polygons.push(polygon);
         this.#polygons$.next(this.#polygons);
     }
@@ -31,7 +31,7 @@ export class PolygonsStoreService {
         this.#polygons$.next(this.#polygons);
     }
 
-    updatePolygonById(polygonId: string, updatedPolygonData: Partial<CanvasPolygon>): void {
+    updatePolygonById(polygonId: string, updatedPolygonData: Partial<CanvasElement>): void {
         const index = this.#polygons.findIndex((polygon) => polygon.id === polygonId);
 
         if (index !== -1) {
@@ -53,7 +53,7 @@ export class PolygonsStoreService {
         }
     }
 
-    getPolygonById(polygonId: string): CanvasPolygon | undefined {
+    getPolygonById(polygonId: string): CanvasElement | undefined {
         return this.#polygons.find((polygon) => polygon.id === polygonId);
     }
 

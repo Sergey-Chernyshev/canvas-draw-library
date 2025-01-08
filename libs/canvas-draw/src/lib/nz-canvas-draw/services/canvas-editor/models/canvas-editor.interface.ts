@@ -1,5 +1,5 @@
 import { FromEnum } from "../../../helpers/general";
-import type { CanvasPolygon } from "../../element/models/element.interface";
+import type { CanvasElement } from "../../element/models/element.module";
 
 export type TransformState = {
     scale: number;
@@ -10,8 +10,8 @@ export type TransformState = {
 export type EditorState = {
     editorMode: EditorMode;
     selectedPolygonId: string | null;
-    selectedPolygon: CanvasPolygon | null;
-    draftPolygon: CanvasPolygon | null;
+    selectedPolygon: CanvasElement | null;
+    draftPolygon: CanvasElement | null;
 };
 
 export const EditorMode = {

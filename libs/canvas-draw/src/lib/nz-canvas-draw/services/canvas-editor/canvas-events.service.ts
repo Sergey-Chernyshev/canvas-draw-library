@@ -5,8 +5,13 @@ import { CursorService } from "@nz/nz-common";
 import { fromEvent, map, switchMap, takeUntil, tap } from "rxjs";
 
 import { CanvasService } from "../canvas.service";
-import { CanvasPolygon, CanvasPolygonTypes, PolygonsService, PolygonsStoreService } from "../element";
-import { findPointInPolygonVertex, isCursorOnAnyBoundary, isEditorUnEditType } from "../utils";
+import { CanvasElement, CanvasElementTypes, PolygonsService, PolygonsStoreService } from "../element";
+import {
+    findPointInPolygonVertex,
+    isCursorOnAnyBoundary,
+    isEditorUnEditType,
+    isPointOnAnyElementByTypes,
+} from "../utils";
 import { CanvasRenderUtilsService } from "./canvas-render-utils.service";
 import { CanvasStateService } from "./canvas-state.service";
 import { DrawModeService } from "./draw-mode/draw-mode.service";
@@ -152,14 +157,14 @@ export class CanvasEventsService {
 
         if (editorState.editorMode === "drawPolygon" && editorState.draftPolygon) {
             this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
-                type: CanvasPolygonTypes.Polygon,
+                type: CanvasElementTypes.Polygon,
             });
             console.log("Рисование полигона окончено");
         }
 
         if (editorState.editorMode === "drawLine" && editorState.draftPolygon) {
             this.#polygonsStoreService.updatePolygonById(editorState.draftPolygon.id, {
-                type: CanvasPolygonTypes.Line,
+                type: CanvasElementTypes.Line,
             });
             console.log("Рисование линии окончено");
         }
@@ -293,11 +298,11 @@ export class CanvasEventsService {
     private onPointerMoveNoDownKey(event: PointerEvent): void {
         const mode: EditorMode = this.#canvasStateService.editorState.editorMode;
         const cursorVertex = this.getCanvasCoordinates(event);
-        const allPolygons: CanvasPolygon[] = this.#polygonsStoreService.selectAllPolygons;
+        const allPolygons: CanvasElement[] = this.#polygonsStoreService.selectAllPolygons;
 
-        const isOnElementBorder = isCursorOnAnyBoundary(cursorVertex, allPolygons, 5);
+        const isOnElement = isPointOnAnyElementByTypes(cursorVertex, allPolygons, 5);
 
-        if (isOnElementBorder) {
+        if (isOnElement) {
             this.#cursorService.setCursor("move");
         } else {
             this.#cursorService.resetCursor();
@@ -328,23 +333,16 @@ export class CanvasEventsService {
         const mode = this.#canvasStateService.editorState.editorMode;
         const { x, y } = this.getCanvasCoordinates(event);
 
-        console.log(mode);
-
         if (mode === "drawPolygon" || mode === "drawLine") {
-            console.log("drawPolygon");
-
             const draftPolygon = this.#canvasStateService.editorState.draftPolygon;
 
             if (!draftPolygon) {
-                console.log("draftPolygon: ", this.#canvasStateService.editorState.draftPolygon, x, y);
-
-                const newPolygon = this.#polygonService.savePolygonData([{ x, y }], CanvasPolygonTypes.Line);
+                const newPolygon = this.#polygonService.savePolygonData([{ x, y }], CanvasElementTypes.Line);
 
                 newPolygon.state = "Selected";
 
                 this.#canvasStateService.editorState.selectedPolygonId = newPolygon.id;
                 this.#canvasStateService.editorState.draftPolygon = newPolygon;
-                console.log("отрисовка полигона");
                 this.#canvasRenderUtilsService.redrawCanvas();
 
                 return;
@@ -365,46 +363,41 @@ export class CanvasEventsService {
 
         let polygonClicked = false;
 
-        this.#polygonsStoreService.selectAllPolygons.forEach((polygon) => {
-            if (!mode || isEditorUnEditType(polygon.type)) {
+        const allElements = this.#polygonsStoreService.selectAllPolygons;
+        const clickedElement = isPointOnAnyElementByTypes({ x, y }, allElements, 5);
+
+        if (clickedElement) {
+            polygonClicked = true;
+            const prevId = this.#canvasStateService.editorState.selectedPolygonId;
+
+            if (prevId === clickedElement.id) {
+                this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });
+                clickedElement.state = "Normal";
+                this.#polygonsStoreService.updatePolygonById(clickedElement.id, clickedElement);
+                this.#canvasRenderUtilsService.redrawCanvas();
+                this.#drawModeService.finalizeAllTempElements();
+
                 return;
             }
 
-            const inside = this.isPointInPolygon({ x, y }, polygon.vertices);
+            if (prevId) {
+                const prevPolygon = this.#polygonsStoreService.getPolygonById(prevId);
 
-            if (inside) {
-                polygonClicked = true;
-                const prevId = this.#canvasStateService.editorState.selectedPolygonId;
-
-                if (prevId === polygon.id) {
-                    this.#canvasStateService.updateEditorState({ editorMode: "viewMode" });
-                    polygon.state = "Normal";
-                    this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
-                    this.#canvasRenderUtilsService.redrawCanvas();
-                    this.#drawModeService.finalizeAllTempElements();
-
-                    return;
+                if (prevPolygon) {
+                    prevPolygon.state = "Normal";
+                    this.#polygonsStoreService.updatePolygonById(prevId, prevPolygon);
                 }
-
-                if (prevId) {
-                    const prevPolygon = this.#polygonsStoreService.getPolygonById(prevId);
-
-                    if (prevPolygon) {
-                        prevPolygon.state = "Normal";
-                        this.#polygonsStoreService.updatePolygonById(prevId, prevPolygon);
-                    }
-                }
-
-                this.#canvasStateService.updateEditorState({ editorMode: "selectMode" });
-                this.#canvasStateService.editorState.selectedPolygonId = polygon.id;
-                polygon.state = "Selected";
-                this.#polygonsStoreService.updatePolygonById(polygon.id, polygon);
-                this.#canvasRenderUtilsService.redrawCanvas();
-
-                this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(polygon, 15);
-                this.updateFPS();
             }
-        });
+
+            this.#canvasStateService.updateEditorState({ editorMode: "selectMode" });
+            this.#canvasStateService.editorState.selectedPolygonId = clickedElement.id;
+            clickedElement.state = "Selected";
+            this.#polygonsStoreService.updatePolygonById(clickedElement.id, clickedElement);
+            this.#canvasRenderUtilsService.redrawCanvas();
+
+            this.#drawModeService.addOrUpdateTemporaryOutlinePolygonOnEdit(clickedElement, 15);
+            this.updateFPS();
+        }
 
         if (!polygonClicked) {
             this.#drawModeService.finalizeAllTempElements();

@@ -1,5 +1,7 @@
-import type { CanvasDotCoordinate, CanvasPolygon } from "../element";
-import { isEditorUnEditType } from "./types-guard.utils";
+import { Point } from "@nz/nz-canvas-draw";
+
+import type { CanvasElement } from "../element";
+import { isEditorUnEditType } from ".";
 
 /**
  * Проверяет, находится ли точка внутри окружности.
@@ -8,17 +10,13 @@ import { isEditorUnEditType } from "./types-guard.utils";
  * @param radius Радиус окружности.
  * @returns true, если точка находится внутри или на границе окружности, иначе false.
  */
-export function isPointInCircle(point: CanvasDotCoordinate, center: CanvasDotCoordinate, radius: number): boolean {
+export function isPointInCircle(point: Point, center: Point, radius: number): boolean {
     const distanceSquared = (point.x - center.x) ** 2 + (point.y - center.y) ** 2;
 
     return distanceSquared <= radius ** 2;
 }
 
-export function findPointInPolygonVertex(
-    point: CanvasDotCoordinate,
-    vertices: CanvasDotCoordinate[],
-    radius: number,
-): number | null {
+export function findPointInPolygonVertex(point: Point, vertices: Point[], radius: number): number | null {
     const radiusSquared = radius ** 2;
 
     for (let i = 0; i < vertices.length; i++) {
@@ -67,9 +65,10 @@ export function isPointOnSegment(
 }
 
 export function isCursorOnAnyBoundary(
-    cursor: { x: number; y: number },
-    polygons: CanvasPolygon[],
+    cursor: Point,
+    polygons: CanvasElement[],
     radius: number,
+    skipClosingEdge: boolean = false,
 ): boolean {
     for (const polygon of polygons) {
         if (isEditorUnEditType(polygon.type)) {
@@ -77,12 +76,19 @@ export function isCursorOnAnyBoundary(
         }
 
         const verts = polygon.vertices;
+        const len = verts.length;
 
-        for (let i = 0; i < verts.length; i++) {
+        const end = skipClosingEdge ? len - 1 : len;
+
+        for (let i = 0; i < end; i++) {
             const start = verts[i];
-            const end = verts[(i + 1) % verts.length];
+            const endPoint = verts[(i + 1) % len];
 
-            if (isPointOnSegment(cursor, start, end, radius)) {
+            if (skipClosingEdge && i + 1 === len) {
+                continue;
+            }
+
+            if (isPointOnSegment(cursor, start, endPoint, radius)) {
                 return true;
             }
         }
@@ -91,13 +97,46 @@ export function isCursorOnAnyBoundary(
     return false;
 }
 
+export function isPointOnAnyElementByTypes(
+    point: Point,
+    elements: CanvasElement[],
+    radius: number = 15,
+): CanvasElement | null {
+    for (const element of elements) {
+        switch (element.type) {
+            case "polygon": {
+                const isPointOnBorder = isCursorOnAnyBoundary(point, [element], radius);
+                const isPointInsideElement = isPointInPolygon(point, element.vertices);
+
+                if (isPointOnBorder || isPointInsideElement) {
+                    return element;
+                }
+
+                break;
+            }
+            case "line": {
+                if (isCursorOnAnyBoundary(point, [element], radius, true)) {
+                    return element;
+                }
+
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+
+    return null;
+}
+
 /**
  * Проверяет, находится ли точка внутри полигона.
  * @param point Точка с координатами { x: number; y: number }.
  * @param vertices Массив вершин полигона, каждая вершина представлена как объект {x: number; y: number }.
- * @returns true, если точка находится внутри полигона (или на границе, если includeBoundary=true), иначе false.
+ * @returns true, если точка находится внутри полигона, иначе false.
  */
-export function isPointInPolygon(point: CanvasDotCoordinate, vertices: CanvasDotCoordinate[]): boolean {
+export function isPointInPolygon(point: Point, vertices: Point[]): boolean {
     let inside = false;
 
     for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
@@ -116,11 +155,6 @@ export function isPointInPolygon(point: CanvasDotCoordinate, vertices: CanvasDot
 
     return inside;
 }
-
-type Point = {
-    x: number;
-    y: number;
-};
 
 // Функция для построения выпуклой оболочки (Алгоритм Монтоны Чейн)
 export function convexHull(points: Point[]): Point[] {

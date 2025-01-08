@@ -3,20 +3,8 @@ import { inject, Injectable } from "@angular/core";
 import { CanvasService } from "../canvas.service";
 import { Point } from "../canvas-editor";
 import { generateUniqueId } from "../utils";
-import { CanvasPolygon, CanvasPolygonTypes } from "./models";
+import { CanvasElement, CanvasElementStyle, CanvasElementTypes } from "./models";
 import { PolygonsStoreService } from "./polygons-store.service";
-
-interface PolygonStyle {
-    strokeStyle: string;
-    lineWidth: number;
-    lineDash: number[];
-    fillStyle: string;
-    vertexColor: string;
-    vertexRadius: number;
-    lineJoin: CanvasLineJoin;
-    lineCap: CanvasLineCap;
-    font?: string;
-}
 
 @Injectable({
     providedIn: "root",
@@ -33,7 +21,7 @@ export class PolygonsService {
         lineCap: "round" as CanvasLineCap,
     };
 
-    readonly #polygonStylesConfig: Record<string, PolygonStyle> = {
+    readonly #polygonStylesConfig: Record<string, CanvasElementStyle> = {
         line: {
             ...this.#baseStyle,
             strokeStyle: "#2980b9",
@@ -73,7 +61,7 @@ export class PolygonsService {
             strokeStyle: "#2980b9",
             lineWidth: 2,
         },
-        outlinePolygon: {
+        outlineElement: {
             ...this.#baseStyle,
             fillStyle: "rgba(0, 0, 0, 0)",
             strokeStyle: "#002b75",
@@ -144,7 +132,7 @@ export class PolygonsService {
      * Рисует тестовый прямоугольник на канвасе.
      * @param polygon
      */
-    drawPolygon(polygon: CanvasPolygon): void {
+    drawPolygon(polygon: CanvasElement): void {
         const ctx = this.#canvasService.ctx;
         const canvasRef = this.#canvasService.canvasRef;
 
@@ -155,7 +143,7 @@ export class PolygonsService {
         const vertices = polygon.vertices;
 
         if (
-            (polygon.type === CanvasPolygonTypes.Polygon || polygon.type === CanvasPolygonTypes.FillPolygon) &&
+            (polygon.type === CanvasElementTypes.Polygon || polygon.type === CanvasElementTypes.FillPolygon) &&
             vertices.length < 2
         ) {
             console.error(`Canvas polygon of type ${polygon.type} needs at least 2 vertices`);
@@ -183,17 +171,20 @@ export class PolygonsService {
                 ctx.lineTo(vertices[i].x, vertices[i].y);
             }
 
-            if (polygon.type !== CanvasPolygonTypes.Line) {
+            if (polygon.type !== CanvasElementTypes.Line) {
                 ctx.closePath();
             }
         }
 
-        if (polygon.type !== CanvasPolygonTypes.Line) {
+        if (polygon.type !== CanvasElementTypes.Line) {
             ctx.fill();
         }
 
-        if (polygon.type !== CanvasPolygonTypes.FillPolygon) {
+        if (polygon.type !== CanvasElementTypes.FillPolygon) {
             ctx.stroke();
+        }
+
+        if ((polygon.state === "Selected" && polygon.type !== "fillPolygon") || polygon.type === "outlineElement") {
             this.drawVertices(vertices, styles.vertexColor, styles.vertexRadius);
         }
 
@@ -206,16 +197,12 @@ export class PolygonsService {
      * @param type
      * @returns Объект типа Polygon с сохраненными данными.
      */
-    savePolygonData(vertices: Point[], type?: CanvasPolygonTypes): CanvasPolygon {
-        const newPolygon: CanvasPolygon = {
+    savePolygonData(vertices: Point[], type?: CanvasElementTypes): CanvasElement {
+        const newPolygon: CanvasElement = {
             id: generateUniqueId(),
             vertices: vertices.map((vertex) => ({ ...vertex })),
-            style: {
-                fillColor: "rgba(0, 128, 255, 0.5)",
-                strokeColor: "black",
-                lineWidth: 2,
-            },
-            type: type || CanvasPolygonTypes.Polygon,
+            style: this.#baseStyle,
+            type: type || CanvasElementTypes.Polygon,
             state: "Normal",
         };
 
@@ -224,12 +211,10 @@ export class PolygonsService {
         return newPolygon;
     }
 
-    private getPolygonStyle(polygon: CanvasPolygon): PolygonStyle {
+    private getPolygonStyle(polygon: CanvasElement): CanvasElementStyle {
         const type = polygon.type;
         const stateSuffix = polygon.state === "Selected" ? "Selected" : "";
         const key = `${type}${stateSuffix}`;
-
-        console.log(key, type);
 
         return this.#polygonStylesConfig[key] || this.#baseStyle;
     }
