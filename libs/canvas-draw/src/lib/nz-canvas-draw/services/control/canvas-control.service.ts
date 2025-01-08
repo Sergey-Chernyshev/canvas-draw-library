@@ -2,14 +2,16 @@ import type { ElementRef, Renderer2 } from "@angular/core";
 import { inject, Injectable, RendererFactory2 } from "@angular/core";
 
 import { CanvasStateService, EditorMode } from "../canvas-editor";
-import { PolygonsStoreService } from "../element/polygons-store.service";
-import { generateUniqueId } from "../utils/functions-utils.utils";
+import { DrawModeService } from "../canvas-editor/draw-mode/draw-mode.service";
+import { PolygonsStoreService } from "../element";
+import { generateUniqueId } from "../utils";
 
 @Injectable({ providedIn: "root" })
 export class CanvasControlService {
     readonly #rendererFactory = inject(RendererFactory2);
     readonly #polygonsStoreService = inject(PolygonsStoreService);
     readonly #canvasStateService = inject(CanvasStateService);
+    readonly #drawModeService = inject(DrawModeService);
 
     readonly #renderer: Renderer2 = this.#rendererFactory.createRenderer(null, null);
 
@@ -87,12 +89,7 @@ export class CanvasControlService {
         });
     }
 
-    #addCircle(): void {
-        console.log("Добавить круг");
-    }
-
     #clearCanvas(): void {
-        console.log("Очистить канвас");
         this.#polygonsStoreService.clearStore();
     }
 
@@ -104,10 +101,10 @@ export class CanvasControlService {
         }
 
         this.#polygonsStoreService.removePolygonById(selectedPolygon.id);
+        this.#drawModeService.finalizeAllTempElements();
     }
 
     #copyPolygonOnCanvas(): void {
-        console.log("Дублировать элемент");
         const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
 
         if (!selectedPolygon) {

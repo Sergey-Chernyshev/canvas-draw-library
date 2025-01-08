@@ -79,6 +79,21 @@ export class CanvasEventsService {
         );
 
         this.#keyShortcutsService.registerShortcut(
+            ["Backspace"],
+            () => {
+                const selectedPolygon = this.#canvasStateService.editorState.selectedPolygon;
+
+                if (!selectedPolygon) {
+                    return;
+                }
+
+                this.#drawModeService.finalizeAllTempElements();
+                this.#polygonsStoreService.removePolygonById(selectedPolygon.id);
+            },
+            true,
+        );
+
+        this.#keyShortcutsService.registerShortcut(
             ["L"],
             () => {
                 const editorState = this.#canvasStateService.editorState.editorMode;
@@ -302,7 +317,7 @@ export class CanvasEventsService {
                     this.#drawModeService.addTemporaryPolygon(draftPolygon);
                     this.#isCursorOnLastVertex = true;
                 } else {
-                    this.#drawModeService.finalizeAllTempElements();
+                    this.#drawModeService.removeTemporaryFillPolygon();
                     this.#isCursorOnLastVertex = false;
                 }
             }

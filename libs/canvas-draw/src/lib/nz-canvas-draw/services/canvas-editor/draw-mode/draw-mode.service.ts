@@ -95,7 +95,7 @@ export class DrawModeService {
     /**
      * Удаляет временный полигон.
      */
-    removeTemporaryPolygon(): void {
+    removeTemporaryFillPolygon(): void {
         if (this.#temporaryPolygon) {
             this.#polygonsStore.removePolygonById(this.#temporaryPolygon.id);
             this.#drawUtilsElements.splice(this.#drawUtilsElements.indexOf(this.#temporaryPolygon.id), 1);
@@ -150,6 +150,6 @@ export class DrawModeService {
     finalizeAllTempElements(): void {
         this.finalizeTemporaryOutlinePolygonOnEdit();
         this.finalizePreviewLine();
-        this.removeTemporaryPolygon();
+        this.removeTemporaryFillPolygon();
     }
 }
