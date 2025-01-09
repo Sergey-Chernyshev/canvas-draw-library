@@ -164,14 +164,12 @@ export class CanvasEventsService {
             this.#polygonsStoreService.updateElementById(editorState.draftPolygon.id, {
                 type: CanvasElementTypes.Polygon,
             });
-            console.log("Рисование полигона окончено");
         }
 
         if (editorState.editorMode === "drawLine" && editorState.draftPolygon) {
             this.#polygonsStoreService.updateElementById(editorState.draftPolygon.id, {
                 type: CanvasElementTypes.Line,
             });
-            console.log("Рисование линии окончено");
         }
 
         this.#deselectElement();

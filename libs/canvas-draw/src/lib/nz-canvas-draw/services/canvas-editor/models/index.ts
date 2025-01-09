@@ -1,1 +1,1 @@
-export * from "./canvas-editor.interface"
+export * from "./canvas-editor.interface";
