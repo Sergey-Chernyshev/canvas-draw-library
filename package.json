@@ -3,10 +3,12 @@
     "version": "0.0.0",
     "license": "MIT",
     "private": true,
-    "serve": {
-        "executor": "nx serve",
-        "options": {
-            "command": "nx serve canvas-preview"
+    "targets": {
+        "serve": {
+            "executor": "@nrwl/workspace:run-commands",
+            "options": {
+                "command": "nx serve canvas-preview"
+            }
         }
     },
     "dependencies": {
@@ -30,6 +32,7 @@
         "@angular/language-service": "~18.2.0",
         "@eslint/js": "^9.8.0",
         "@nrwl/angular": "^19.8.4",
+        "@nrwl/workspace": "^19.8.4",
         "@nx/angular": "20.0.8",
         "@nx/eslint": "20.0.8",
         "@nx/eslint-plugin": "20.0.8",
